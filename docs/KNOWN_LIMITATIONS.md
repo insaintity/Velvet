@@ -4,7 +4,7 @@
 - Local persistence uses `.velvet/db.json`, which is appropriate for local development but not multi-user production hosting.
 - Supabase/Postgres database URLs can be saved, validated, initialized, synced, and used as an opt-in hosted mirror. Local `.velvet` remains the fallback cache.
 - Secrets are encrypted locally by default. Production can read secrets from environment-backed vaults, but a dedicated KMS adapter is not implemented yet.
-- Job records are persisted, but there is not yet a separate durable worker process.
+- Job records are persisted and the local worker can process queued music, render and upload work. Production still needs a managed worker runtime.
 - ElevenLabs music generation depends on the live provider endpoint and a valid key.
 - The render endpoint creates a manifest and attempts MP4 composition when FFmpeg is on PATH or `FFMPEG_PATH` points to `ffmpeg.exe`.
 - YouTube upload is implemented as an API endpoint, but requires a real MP4 export path and configured OAuth credentials.

@@ -414,21 +414,14 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
   }, [loadProject]);
 
   async function runAction(action: "approve" | "music" | "render" | "upload") {
-    const endpoints = {
-      approve: `/api/projects/${id}/approve`,
-      music: "/api/music",
-      render: "/api/render",
-      upload: "/api/youtube/upload"
-    };
-
     setBusyAction(action);
     setMessage(`${actionLabel(action)}...`);
 
     try {
-      const response = await fetch(endpoints[action], {
+      const response = await fetch(action === "approve" ? `/api/projects/${id}/approve` : "/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: id, privacy })
+        body: JSON.stringify(action === "approve" ? { projectId: id } : { projectId: id, type: queuedJobType(action), payload: { privacy } })
       });
       const data = await response.json();
 
@@ -656,6 +649,15 @@ function actionLabel(action: "approve" | "music" | "render" | "upload") {
     music: "Generating music",
     render: "Rendering package",
     upload: "Uploading to YouTube"
+  }[action];
+}
+
+function queuedJobType(action: "approve" | "music" | "render" | "upload") {
+  return {
+    approve: "blueprint",
+    music: "music",
+    render: "render",
+    upload: "youtube-upload"
   }[action];
 }
 

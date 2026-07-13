@@ -29,6 +29,7 @@ Implemented:
 - Blueprint approval endpoint and workflow controls
 - Prompt/version history records
 - Job queue records for blueprint, music, render and YouTube upload work
+- Local worker process for queued music, render and YouTube upload jobs
 - Provider usage records for OpenAI, ElevenLabs, FFmpeg, and YouTube operations
 - Budget guardrails for track count and render attempts
 - Configurable cost estimates for OpenAI, ElevenLabs, FFmpeg, and YouTube usage records
@@ -51,6 +52,6 @@ Implemented:
 Pending:
 
 - Full hosted database primary mode with conflict handling
-- Durable background workers outside the request lifecycle
+- Managed production worker runtime
 - Full FFmpeg MP4 rendering requires FFmpeg on PATH or `FFMPEG_PATH`
 - Managed KMS adapter beyond env-backed production secrets

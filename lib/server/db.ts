@@ -112,6 +112,29 @@ export async function updateJob(id: string, patch: Partial<JobRecord>) {
   return database.jobs.find((job) => job.id === id);
 }
 
+export async function claimNextQueuedJob() {
+  const database = await readDatabase();
+  const nextJob = [...database.jobs]
+    .filter((job) => job.status === "queued")
+    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())[0];
+
+  if (!nextJob) {
+    return undefined;
+  }
+
+  const now = new Date().toISOString();
+  const claimedJob: JobRecord = {
+    ...nextJob,
+    status: "running",
+    message: `Worker started ${nextJob.type}.`,
+    updatedAt: now
+  };
+
+  database.jobs = database.jobs.map((job) => (job.id === nextJob.id ? claimedJob : job));
+  await writeDatabase(database);
+  return claimedJob;
+}
+
 export async function getProject(id: string) {
   const database = await readDatabase();
   return database.projects.find((project) => project.id === id);

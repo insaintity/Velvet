@@ -20,6 +20,7 @@ The app opens like a brand-new workspace and guides the user through setup befor
 - Stores projects, prompt versions, jobs, and upload records in a local project database.
 - Records provider usage units for blueprint, music, render, and upload operations.
 - Estimates provider and render costs when optional local rates are configured.
+- Queues music, render, and YouTube upload jobs for a separate Velvet worker process.
 - Exchanges YouTube OAuth codes for tokens and stores refresh tokens encrypted.
 - Provides backend routes for ElevenLabs music generation, render manifests, and YouTube uploads.
 - Provides a fixed, no-scroll studio interface with dark midnight styling.
@@ -50,6 +51,18 @@ Open:
 
 ```text
 http://localhost:3000/dashboard
+```
+
+Run the worker in a second terminal when you want queued generation, render, and upload jobs to process:
+
+```bash
+npm run worker
+```
+
+For one-off local checks, process at most one queued job:
+
+```bash
+npm run worker:once
 ```
 
 ## Available Routes
@@ -125,12 +138,13 @@ Important variables include:
 - `VELVET_MASTER_KEY` or `TOKEN_ENCRYPTION_KEY` for deterministic local secret encryption
 - `YOUTUBE_REFRESH_TOKEN` for env-backed YouTube OAuth token storage
 - `VELVET_OPENAI_INPUT_PER_1M_TOKENS_USD`, `VELVET_OPENAI_OUTPUT_PER_1M_TOKENS_USD`, `VELVET_ELEVENLABS_PER_MINUTE_USD`, `VELVET_FFMPEG_PER_RENDER_MINUTE_USD`, and `VELVET_YOUTUBE_UPLOAD_PER_VIDEO_USD` for optional local cost estimates
+- `VELVET_WORKER_INTERVAL_MS` polling interval for the local durable worker
 - `WORKER_SECRET`
 
 ## Current Limitations
 
 - The local `.velvet/` database is intended for development and single-user desktop use.
-- Long-running jobs are recorded, but not yet processed by a durable worker service.
+- Long-running music, render, and upload work is queued for the local worker process. A production deployment still needs a managed worker runtime.
 - The render endpoint creates a render manifest and will attempt FFmpeg MP4 composition when FFmpeg is on PATH or `FFMPEG_PATH` points to `ffmpeg.exe`.
 - YouTube upload requires a real rendered MP4 path and configured Google OAuth credentials.
 - User-provided Supabase/Postgres connections can be saved, validated, initialized, synced, and used as an opt-in hosted mirror.

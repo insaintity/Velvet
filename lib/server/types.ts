@@ -100,6 +100,7 @@ export type JobRecord = {
   projectId?: string;
   status: "queued" | "running" | "completed" | "failed" | "blocked";
   message: string;
+  payload?: Record<string, unknown>;
   result?: unknown;
   error?: string;
   createdAt: string;
