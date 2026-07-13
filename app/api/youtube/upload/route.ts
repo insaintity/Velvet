@@ -2,12 +2,16 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { addJob, readDatabase, updateJob, writeDatabase } from "@/lib/server/db";
+import { addJob, addUsage, readDatabase, updateJob, writeDatabase } from "@/lib/server/db";
 import { exportsDir } from "@/lib/server/paths";
 import { refreshYouTubeAccessToken, uploadYouTubeVideo } from "@/lib/server/providers/youtube";
+import { requireSameOrigin } from "@/lib/server/security";
 import { readSecret } from "@/lib/server/secrets";
 
 export async function POST(request: Request) {
+  const blocked = requireSameOrigin(request);
+  if (blocked) return blocked;
+
   const { projectId, videoPath, privacy = "private" } = await request.json();
   const database = await readDatabase();
   const project = database.projects.find((item) => item.id === projectId);
@@ -64,6 +68,7 @@ export async function POST(request: Request) {
     latest.uploads.unshift(record);
     latest.projects = latest.projects.map((item) => (item.id === projectId ? { ...item, status: "uploaded", updatedAt: new Date().toISOString() } : item));
     await writeDatabase(latest);
+    await addUsage({ provider: "youtube", projectId, operation: "upload", units: { videos: 1, bytes: video.byteLength } });
     await updateJob(job.id, { status: "completed", message: "Video uploaded to YouTube.", result: record });
     return NextResponse.json({ upload: record });
   } catch (error) {

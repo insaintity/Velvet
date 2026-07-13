@@ -22,7 +22,7 @@ export async function generateAlbumBlueprint({
   apiKey: string;
   model: string;
   brief: string;
-}): Promise<{ blueprint: AlbumBlueprint; raw: string }> {
+}): Promise<{ blueprint: AlbumBlueprint; raw: string; usage?: Record<string, number> }> {
   const response = await fetch(`${openaiBaseUrl}/responses`, {
     method: "POST",
     headers: {
@@ -96,5 +96,5 @@ export async function generateAlbumBlueprint({
 
   const data = await response.json();
   const raw = data.output_text ?? data.output?.flatMap((item: { content?: Array<{ text?: string }> }) => item.content ?? []).map((item: { text?: string }) => item.text ?? "").join("");
-  return { blueprint: JSON.parse(raw), raw };
+  return { blueprint: JSON.parse(raw), raw, usage: data.usage };
 }

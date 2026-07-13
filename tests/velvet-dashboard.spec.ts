@@ -132,6 +132,10 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Generate" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Render" })).toBeVisible();
+    await page.getByRole("button", { name: "Edit" }).click();
+    await expect(page.getByLabel("YouTube title")).toBeVisible();
+    await expect(page.getByLabel("Privacy")).toBeVisible();
+    await expect(page.getByText("No usage recorded yet.")).toBeVisible();
   });
 
   test("keeps primary pages inside the fixed studio frame", async ({ page }) => {

@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { addJob, addPrompt, readDatabase, updateJob, writeDatabase } from "@/lib/server/db";
+import { addJob, addPrompt, addUsage, readDatabase, updateJob, writeDatabase } from "@/lib/server/db";
 import { generateAlbumBlueprint } from "@/lib/server/providers/openai";
+import { requireSameOrigin } from "@/lib/server/security";
 import { readSecret } from "@/lib/server/secrets";
 import type { ProjectRecord } from "@/lib/server/types";
 
@@ -11,6 +12,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const blocked = requireSameOrigin(request);
+  if (blocked) return blocked;
+
   const { brief } = await request.json();
 
   if (!brief || typeof brief !== "string" || brief.trim().length < 12) {
@@ -30,7 +34,7 @@ export async function POST(request: Request) {
   });
 
   try {
-    const { blueprint, raw } = await generateAlbumBlueprint({
+    const { blueprint, raw, usage } = await generateAlbumBlueprint({
       apiKey: openaiKey,
       model: database.setup.openai?.planningModel || "gpt-4.1",
       brief: brief.trim()
@@ -49,6 +53,9 @@ export async function POST(request: Request) {
     latest.projects.unshift(project);
     await writeDatabase(latest);
     await addPrompt({ projectId: project.id, kind: "album-blueprint", prompt: brief.trim(), response: raw });
+    if (usage) {
+      await addUsage({ provider: "openai", projectId: project.id, operation: "album-blueprint", units: usage });
+    }
     await updateJob(job.id, { status: "completed", message: "Blueprint created.", projectId: project.id, result: { projectId: project.id } });
     return NextResponse.json({ project });
   } catch (error) {

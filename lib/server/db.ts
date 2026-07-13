@@ -1,14 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { databasePath, ensureVelvetDir } from "./paths";
-import type { JobRecord, ProjectRecord, PromptRecord, SetupRecord, VelvetDatabase } from "./types";
+import type { JobRecord, ProjectRecord, PromptRecord, SetupRecord, UsageRecord, VelvetDatabase } from "./types";
 
 const emptyDatabase: VelvetDatabase = {
   setup: {},
   projects: [],
   prompts: [],
   jobs: [],
-  uploads: []
+  uploads: [],
+  usage: []
 };
 
 export async function readDatabase(): Promise<VelvetDatabase> {
@@ -82,4 +83,16 @@ export async function updateProject(id: string, patch: Partial<ProjectRecord>) {
   );
   await writeDatabase(database);
   return database.projects.find((project) => project.id === id);
+}
+
+export async function addUsage(usage: Omit<UsageRecord, "id" | "createdAt">) {
+  const database = await readDatabase();
+  const record: UsageRecord = {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    ...usage
+  };
+  database.usage.unshift(record);
+  await writeDatabase(database);
+  return record;
 }

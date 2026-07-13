@@ -114,6 +114,13 @@ type ClientJob = {
   message: string;
 };
 
+type ClientUsage = {
+  id: string;
+  provider: string;
+  operation: string;
+  units: Record<string, number>;
+};
+
 function Sidebar({ pathname }: { pathname: string }) {
   return (
     <aside className="panel flex min-h-0 flex-col rounded-[22px] px-4 py-6">
@@ -344,14 +351,38 @@ function ProjectsWorkspace() {
 function ProjectDetailWorkspace({ id }: { id: string }) {
   const [project, setProject] = useState<ClientProject | null>(null);
   const [jobs, setJobs] = useState<ClientJob[]>([]);
+  const [usage, setUsage] = useState<ClientUsage[]>([]);
   const [message, setMessage] = useState("Review the blueprint before running paid generation.");
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [privacy, setPrivacy] = useState<"private" | "unlisted" | "public">("private");
+  const [editForm, setEditForm] = useState({
+    title: "",
+    concept: "",
+    coverPrompt: "",
+    videoPrompt: "",
+    youtubeTitle: "",
+    youtubeDescription: "",
+    youtubeTags: ""
+  });
 
   const loadProject = useCallback(async () => {
     const response = await fetch(`/api/projects/${id}`);
     const data = await response.json();
     setProject(data.project ?? null);
     setJobs(data.jobs ?? []);
+    setUsage(data.usage ?? []);
+    if (data.project?.blueprint) {
+      setEditForm({
+        title: data.project.title ?? "",
+        concept: data.project.blueprint.concept ?? "",
+        coverPrompt: data.project.blueprint.coverPrompt ?? "",
+        videoPrompt: data.project.blueprint.videoPrompt ?? "",
+        youtubeTitle: data.project.blueprint.youtube.title ?? "",
+        youtubeDescription: data.project.blueprint.youtube.description ?? "",
+        youtubeTags: data.project.blueprint.youtube.tags?.join(", ") ?? ""
+      });
+    }
   }, [id]);
 
   useEffect(() => {
@@ -373,7 +404,7 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
       const response = await fetch(endpoints[action], {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: id })
+        body: JSON.stringify({ projectId: id, privacy })
       });
       const data = await response.json();
 
@@ -386,6 +417,32 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : `${actionLabel(action)} failed.`);
       await loadProject().catch(() => undefined);
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function saveProjectEdits() {
+    setBusyAction("save");
+    setMessage("Saving project edits...");
+
+    try {
+      const response = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm)
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Project edits could not be saved.");
+      }
+
+      setIsEditing(false);
+      setMessage("Project edits saved.");
+      await loadProject();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Project edits could not be saved.");
     } finally {
       setBusyAction(null);
     }
@@ -411,6 +468,7 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
             <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--text-secondary)]">{project.blueprint?.concept ?? project.brief}</p>
           </div>
           <div className="flex shrink-0 gap-2">
+            <WorkflowButton label={isEditing ? "Done" : "Edit"} active={busyAction === "save"} onClick={() => (isEditing ? saveProjectEdits() : setIsEditing(true))} disabled={!project.blueprint} />
             <WorkflowButton label="Approve" active={busyAction === "approve"} onClick={() => runAction("approve")} disabled={project.status !== "blueprint"} />
             <WorkflowButton label="Generate" active={busyAction === "music"} onClick={() => runAction("music")} disabled={!["approved", "generating"].includes(project.status)} />
             <WorkflowButton label="Render" active={busyAction === "render"} onClick={() => runAction("render")} disabled={!project.generatedTracks?.length} />
@@ -439,19 +497,33 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
           </div>
           <div className="space-y-3">
             <SectionTitle label="Release Package" />
-            <InfoTile label="Cover prompt" value={project.blueprint?.coverPrompt ?? "Waiting for blueprint"} />
-            <InfoTile label="Video prompt" value={project.blueprint?.videoPrompt ?? "Waiting for blueprint"} />
-            <InfoTile label="YouTube title" value={project.blueprint?.youtube.title ?? "Waiting for blueprint"} />
+            {isEditing ? (
+              <div className="space-y-2">
+                <EditField label="Title" value={editForm.title} onChange={(value) => setEditForm((current) => ({ ...current, title: value }))} />
+                <EditArea label="Concept" value={editForm.concept} onChange={(value) => setEditForm((current) => ({ ...current, concept: value }))} />
+                <EditArea label="Cover prompt" value={editForm.coverPrompt} onChange={(value) => setEditForm((current) => ({ ...current, coverPrompt: value }))} />
+                <EditArea label="Video prompt" value={editForm.videoPrompt} onChange={(value) => setEditForm((current) => ({ ...current, videoPrompt: value }))} />
+                <EditField label="YouTube title" value={editForm.youtubeTitle} onChange={(value) => setEditForm((current) => ({ ...current, youtubeTitle: value }))} />
+                <EditArea label="YouTube description" value={editForm.youtubeDescription} onChange={(value) => setEditForm((current) => ({ ...current, youtubeDescription: value }))} />
+                <EditField label="Tags" value={editForm.youtubeTags} onChange={(value) => setEditForm((current) => ({ ...current, youtubeTags: value }))} />
+              </div>
+            ) : (
+              <>
+                <InfoTile label="Cover prompt" value={project.blueprint?.coverPrompt ?? "Waiting for blueprint"} />
+                <InfoTile label="Video prompt" value={project.blueprint?.videoPrompt ?? "Waiting for blueprint"} />
+                <InfoTile label="YouTube title" value={project.blueprint?.youtube.title ?? "Waiting for blueprint"} />
+              </>
+            )}
             <InfoTile label="Render" value={project.render?.message ?? "Not rendered yet"} />
           </div>
         </div>
       </section>
 
-      <aside className="space-y-4 overflow-hidden">
-        <aside className="panel rounded-xl p-5">
+      <aside className="space-y-3 overflow-hidden">
+        <aside className="panel rounded-xl p-4">
           <SectionTitle label="Job Queue" />
-          <div className="mt-4 space-y-2">
-            {(jobs.length ? jobs : [{ id: "empty", type: "ready", status: "idle", message: "No project jobs yet." }]).slice(0, 6).map((job) => (
+          <div className="mt-3 space-y-2">
+            {(jobs.length ? jobs : [{ id: "empty", type: "ready", status: "idle", message: "No project jobs yet." }]).slice(0, 4).map((job) => (
               <div key={job.id} className="rounded-lg border border-[var(--border)] bg-white/[0.035] p-3">
                 <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.12em] text-[var(--rose-soft)]">
                   <span>{job.type}</span>
@@ -462,7 +534,33 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
             ))}
           </div>
         </aside>
-        <EmptyPanel title="Files" body={project.generatedTracks?.length ? `${project.generatedTracks.length} generated track file(s) stored locally.` : "Generated audio and render outputs will appear in the local Velvet export folder."} />
+        <aside className="panel rounded-xl p-4">
+          <SectionTitle label="Upload" />
+          <label className="mt-3 block text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">
+            Privacy
+            <select
+              value={privacy}
+              onChange={(event) => setPrivacy(event.target.value as "private" | "unlisted" | "public")}
+              className="mt-1.5 h-9 w-full rounded-lg border border-[var(--border)] bg-black/20 px-3 text-xs normal-case tracking-normal text-white outline-none"
+            >
+              <option value="private">Private</option>
+              <option value="unlisted">Unlisted</option>
+              <option value="public">Public</option>
+            </select>
+          </label>
+        </aside>
+        <aside className="panel rounded-xl p-4">
+          <SectionTitle label="Usage" />
+          <div className="mt-3 space-y-2">
+            {(usage.length ? usage : [{ id: "empty", provider: "ready", operation: "No usage recorded yet.", units: {} }]).slice(0, 3).map((item) => (
+              <div key={item.id} className="rounded-lg border border-[var(--border)] bg-white/[0.035] p-3 text-xs text-[var(--text-secondary)]">
+                <div className="uppercase tracking-[0.12em] text-[var(--rose-soft)]">{item.provider}</div>
+                <div className="mt-1">{item.operation}</div>
+              </div>
+            ))}
+          </div>
+        </aside>
+        <EmptyPanel title="Files" body={project.generatedTracks?.length ? `${project.generatedTracks.length} generated track file(s) stored locally.` : "Generated audio and render outputs appear in the local Velvet export folder."} />
       </aside>
     </div>
   );
@@ -496,6 +594,32 @@ function InfoTile({ label, value }: { label: string; value: string }) {
       <div className="text-xs uppercase tracking-[0.14em] text-[var(--rose-soft)]">{label}</div>
       <p className="mt-2 line-clamp-3 text-xs leading-5 text-[var(--text-secondary)]">{value}</p>
     </article>
+  );
+}
+
+function EditField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">
+      {label}
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1.5 h-8 w-full rounded-lg border border-[var(--border)] bg-black/15 px-3 text-xs normal-case tracking-normal text-white outline-none"
+      />
+    </label>
+  );
+}
+
+function EditArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">
+      {label}
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1.5 h-16 w-full resize-none rounded-lg border border-[var(--border)] bg-black/15 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none"
+      />
+    </label>
   );
 }
 

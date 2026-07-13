@@ -12,7 +12,9 @@ The app opens like a brand-new workspace and guides the user through setup befor
 - Validates OpenAI and ElevenLabs keys.
 - Generates album blueprints with OpenAI once setup is complete.
 - Provides a project review screen for approving blueprints before paid generation.
+- Lets the user edit project title, concept, generation prompts, and YouTube metadata before generation/upload.
 - Stores projects, prompt versions, jobs, and upload records in a local project database.
+- Records provider usage units for blueprint, music, render, and upload operations.
 - Exchanges YouTube OAuth codes for tokens and stores refresh tokens encrypted.
 - Provides backend routes for ElevenLabs music generation, render manifests, and YouTube uploads.
 - Provides a fixed, no-scroll studio interface with dark midnight styling.
@@ -122,6 +124,7 @@ Important variables include:
 - The render endpoint creates a render manifest and will attempt FFmpeg MP4 composition when FFmpeg is on PATH or `FFMPEG_PATH` points to `ffmpeg.exe`.
 - YouTube upload requires a real rendered MP4 path and configured Google OAuth credentials.
 - Supabase or hosted database persistence is not wired yet.
+- Budget guardrails are recorded at the usage layer, but pricing/cost calculations are not yet attached.
 
 ## Design Direction
 

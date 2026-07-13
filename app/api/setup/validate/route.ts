@@ -2,9 +2,13 @@ import { NextResponse } from "next/server";
 import { updateSetup } from "@/lib/server/db";
 import { validateElevenLabsKey } from "@/lib/server/providers/elevenlabs";
 import { validateOpenAIKey } from "@/lib/server/providers/openai";
+import { requireSameOrigin } from "@/lib/server/security";
 import { readSecret } from "@/lib/server/secrets";
 
 export async function POST(request: Request) {
+  const blocked = requireSameOrigin(request);
+  if (blocked) return blocked;
+
   const { provider } = await request.json();
   const now = new Date().toISOString();
 

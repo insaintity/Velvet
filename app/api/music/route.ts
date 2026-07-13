@@ -1,12 +1,16 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { addJob, readDatabase, updateJob, writeDatabase } from "@/lib/server/db";
+import { addJob, addUsage, readDatabase, updateJob, writeDatabase } from "@/lib/server/db";
 import { exportsDir } from "@/lib/server/paths";
 import { generateMusicTrack } from "@/lib/server/providers/elevenlabs";
+import { requireSameOrigin } from "@/lib/server/security";
 import { readSecret } from "@/lib/server/secrets";
 
 export async function POST(request: Request) {
+  const blocked = requireSameOrigin(request);
+  if (blocked) return blocked;
+
   const { projectId } = await request.json();
   const database = await readDatabase();
   const project = database.projects.find((item) => item.id === projectId);
@@ -48,6 +52,12 @@ export async function POST(request: Request) {
       item.id === projectId ? { ...item, status: "generating", generatedTracks: tracks, updatedAt: new Date().toISOString() } : item
     );
     await writeDatabase(latest);
+    await addUsage({
+      provider: "elevenlabs",
+      projectId,
+      operation: "music-generation",
+      units: { tracks: tracks.length, seconds: tracks.reduce((sum, track) => sum + track.durationSeconds, 0) }
+    });
     await updateJob(job.id, { status: "completed", message: "Music tracks generated.", result: { tracks } });
 
     return NextResponse.json({ tracks });

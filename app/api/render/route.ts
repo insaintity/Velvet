@@ -4,13 +4,17 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { NextResponse } from "next/server";
-import { addJob, readDatabase, updateJob, writeDatabase } from "@/lib/server/db";
+import { addJob, addUsage, readDatabase, updateJob, writeDatabase } from "@/lib/server/db";
 import { exportsDir } from "@/lib/server/paths";
+import { requireSameOrigin } from "@/lib/server/security";
 
 const execFileAsync = promisify(execFile);
 const ffmpegBinary = process.env.FFMPEG_PATH || "ffmpeg";
 
 export async function POST(request: Request) {
+  const blocked = requireSameOrigin(request);
+  if (blocked) return blocked;
+
   const { projectId } = await request.json();
   const database = await readDatabase();
   const project = database.projects.find((item) => item.id === projectId);
@@ -86,6 +90,7 @@ export async function POST(request: Request) {
       : item
   );
   await writeDatabase(latest);
+  await addUsage({ provider: "ffmpeg", projectId, operation: "render", units: { renders: renderStatus === "rendered" ? 1 : 0 } });
   await updateJob(job.id, { status: renderStatus === "rendered" ? "completed" : "blocked", message, result: { manifestPath: filePath, videoPath } });
 
   return NextResponse.json({ manifest, manifestPath: filePath, videoPath, status: renderStatus, message });

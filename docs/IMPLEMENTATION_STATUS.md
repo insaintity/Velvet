@@ -18,9 +18,13 @@ Implemented:
 - ChatGPT/OpenAI album blueprint generation endpoint
 - Project database persisted to `.velvet/db.json`
 - Project detail screen with blueprint review
+- Project editing for title, concept, prompts, and YouTube metadata
 - Blueprint approval endpoint and workflow controls
 - Prompt/version history records
 - Job queue records for blueprint, music, render and YouTube upload work
+- Provider usage records for OpenAI, ElevenLabs, FFmpeg, and YouTube operations
+- Upload privacy selector
+- Same-origin guard on mutating API routes
 - ElevenLabs music generation endpoint for blueprint tracks
 - Render manifest export endpoint with FFmpeg detection
 - Safe YouTube upload path validation

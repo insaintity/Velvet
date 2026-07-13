@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readDatabase, updateSetup } from "@/lib/server/db";
+import { requireSameOrigin } from "@/lib/server/security";
 import { hasSecret, saveSecret } from "@/lib/server/secrets";
 
 export async function GET() {
@@ -15,6 +16,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const blocked = requireSameOrigin(request);
+  if (blocked) return blocked;
+
   const body = await request.json();
 
   await saveSecret("openai", body.openaiApiKey ?? "");

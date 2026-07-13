@@ -102,10 +102,20 @@ export type UploadRecord = {
   createdAt: string;
 };
 
+export type UsageRecord = {
+  id: string;
+  provider: "openai" | "elevenlabs" | "youtube" | "ffmpeg";
+  projectId?: string;
+  operation: string;
+  units: Record<string, number>;
+  createdAt: string;
+};
+
 export type VelvetDatabase = {
   setup: SetupRecord;
   projects: ProjectRecord[];
   prompts: PromptRecord[];
   jobs: JobRecord[];
   uploads: UploadRecord[];
+  usage: UsageRecord[];
 };
