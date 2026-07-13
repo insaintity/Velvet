@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   ChevronDown,
@@ -290,6 +291,12 @@ function HistoryWorkspace() {
 }
 
 function SettingsWorkspace() {
+  const [youtubeStatus, setYoutubeStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setYoutubeStatus(new URLSearchParams(window.location.search).get("youtube"));
+  }, []);
+
   return (
     <div className="min-h-0 flex-1 overflow-hidden p-4">
       <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-5">
@@ -370,6 +377,8 @@ function SettingsWorkspace() {
             </SetupCard>
           </div>
 
+          {youtubeStatus ? <YouTubeStatusNotice status={youtubeStatus} /> : null}
+
           <div className="mt-3 flex items-center justify-between gap-4 rounded-xl border border-[rgba(239,99,152,0.22)] bg-[rgba(239,99,152,0.06)] p-3">
             <div>
             <div className="flex items-center gap-2 text-sm font-medium">
@@ -412,6 +421,23 @@ function SettingsWorkspace() {
           </aside>
         </aside>
       </div>
+    </div>
+  );
+}
+
+function YouTubeStatusNotice({ status }: { status: string }) {
+  const message =
+    status === "missing_config"
+      ? "YouTube login needs GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and YOUTUBE_REDIRECT_URI in the server environment."
+      : status === "authorized_pending_storage"
+        ? "YouTube authorized successfully. Token exchange and encrypted storage are the next backend step."
+        : status === "invalid_state"
+          ? "YouTube login could not be verified. Please try again."
+          : "YouTube login was not completed.";
+
+  return (
+    <div className="mt-3 rounded-xl border border-[rgba(213,161,94,0.28)] bg-[rgba(213,161,94,0.07)] p-3 text-xs leading-5 text-[var(--text-secondary)]">
+      {message}
     </div>
   );
 }

@@ -35,6 +35,13 @@ test.describe("Velvet Coda dashboard", () => {
     await expect(page.getByRole("button", { name: "Save Setup" })).toBeVisible();
   });
 
+  test("returns to settings when YouTube OAuth is not configured", async ({ page }) => {
+    await page.goto("/api/youtube/login");
+
+    await expect(page).toHaveURL(/\/settings\?youtube=missing_config/);
+    await expect(page.getByText("YouTube login needs GOOGLE_CLIENT_ID")).toBeVisible();
+  });
+
   test("keeps onboarding step labels inside their boxes", async ({ page }) => {
     await page.goto("/settings");
 

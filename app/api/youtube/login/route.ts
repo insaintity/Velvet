@@ -7,18 +7,13 @@ const youtubeScopes = [
   "https://www.googleapis.com/auth/youtube.readonly"
 ];
 
-export async function GET() {
+export async function GET(request: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const redirectUri = process.env.YOUTUBE_REDIRECT_URI;
 
-  if (!clientId || !redirectUri) {
-    return NextResponse.json(
-      {
-        error: "YouTube OAuth is not configured.",
-        required: ["GOOGLE_CLIENT_ID", "YOUTUBE_REDIRECT_URI"]
-      },
-      { status: 501 }
-    );
+  if (!clientId || !clientSecret || !redirectUri) {
+    return NextResponse.redirect(new URL("/settings?youtube=missing_config", request.url));
   }
 
   const state = randomBytes(24).toString("hex");
