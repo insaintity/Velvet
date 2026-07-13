@@ -58,25 +58,9 @@ export async function POST(request: Request) {
     try {
       await execFileAsync(ffmpegBinary, ["-version"]);
       videoPath = path.join(projectDir, `${project.id}.mp4`);
-      await execFileAsync(ffmpegBinary, [
-        "-y",
-        "-f",
-        "lavfi",
-        "-i",
-        "color=c=0b0712:s=1920x1080:r=30",
-        "-i",
-        project.generatedTracks[0].filePath,
-        "-shortest",
-        "-c:v",
-        "libx264",
-        "-c:a",
-        "aac",
-        "-pix_fmt",
-        "yuv420p",
-        videoPath
-      ]);
+      await execFileAsync(ffmpegBinary, buildAlbumRenderArgs(project.generatedTracks, videoPath));
       renderStatus = "rendered";
-      message = "MP4 rendered with FFmpeg.";
+      message = "Full album MP4 rendered with FFmpeg.";
     } catch {
       message = "Render package is ready, but FFmpeg is not available to Velvet or could not render the video. Set FFMPEG_PATH if it is not on PATH.";
     }
@@ -108,4 +92,44 @@ export async function POST(request: Request) {
   await updateJob(job.id, { status: renderStatus === "rendered" ? "completed" : "blocked", message, result: { manifestPath: filePath, videoPath } });
 
   return NextResponse.json({ manifest, manifestPath: filePath, videoPath, status: renderStatus, message });
+}
+
+function buildAlbumRenderArgs(tracks: Array<{ filePath: string; durationSeconds: number }>, videoPath: string) {
+  const totalSeconds = Math.max(
+    1,
+    tracks.reduce((sum, track) => sum + track.durationSeconds, 0)
+  );
+  const baseArgs = [
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    `color=c=0b0712:s=1920x1080:r=30:d=${totalSeconds}`,
+    ...tracks.flatMap((track) => ["-i", track.filePath])
+  ];
+
+  const audioArgs =
+    tracks.length === 1
+      ? ["-map", "0:v", "-map", "1:a"]
+      : [
+          "-filter_complex",
+          `${tracks.map((_, index) => `[${index + 1}:a]`).join("")}concat=n=${tracks.length}:v=0:a=1[aout]`,
+          "-map",
+          "0:v",
+          "-map",
+          "[aout]"
+        ];
+
+  return [
+    ...baseArgs,
+    ...audioArgs,
+    "-c:v",
+    "libx264",
+    "-c:a",
+    "aac",
+    "-pix_fmt",
+    "yuv420p",
+    "-shortest",
+    videoPath
+  ];
 }

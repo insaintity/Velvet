@@ -40,12 +40,21 @@ export async function saveSecret(name: SecretName, value: string) {
     return;
   }
 
+  if (process.env.VELVET_SECRET_PROVIDER === "vault") {
+    await saveVaultSecret(name, value.trim());
+    return;
+  }
+
   const store = await readSecretStore();
   store[name] = await encryptSecret(value.trim());
   await writeSecretStore(store);
 }
 
 export async function readSecret(name: SecretName) {
+  if (process.env.VELVET_SECRET_PROVIDER === "vault") {
+    return readVaultSecret(name);
+  }
+
   const envSecret = readEnvironmentSecret(name);
   if (envSecret) {
     return envSecret;
@@ -57,6 +66,10 @@ export async function readSecret(name: SecretName) {
 }
 
 export async function hasSecret(name: SecretName) {
+  if (process.env.VELVET_SECRET_PROVIDER === "vault") {
+    return Boolean(await readVaultSecret(name));
+  }
+
   if (readEnvironmentSecret(name)) {
     return true;
   }
@@ -74,4 +87,54 @@ function readEnvironmentSecret(name: SecretName) {
   }
 
   return undefined;
+}
+
+async function readVaultSecret(name: SecretName) {
+  const config = getVaultConfig();
+  if (!config) {
+    return undefined;
+  }
+
+  const response = await fetch(`${config.addr}/v1/${config.mount}/data/${config.path}/${name}`, {
+    headers: { "X-Vault-Token": config.token }
+  });
+
+  if (!response.ok) {
+    return undefined;
+  }
+
+  const body = (await response.json()) as { data?: { data?: { value?: string } } };
+  return body.data?.data?.value?.trim() || undefined;
+}
+
+async function saveVaultSecret(name: SecretName, value: string) {
+  const config = getVaultConfig();
+  if (!config) {
+    return;
+  }
+
+  await fetch(`${config.addr}/v1/${config.mount}/data/${config.path}/${name}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Vault-Token": config.token
+    },
+    body: JSON.stringify({ data: { value } })
+  });
+}
+
+function getVaultConfig() {
+  const addr = process.env.VELVET_VAULT_ADDR?.replace(/\/$/, "");
+  const token = process.env.VELVET_VAULT_TOKEN;
+
+  if (!addr || !token) {
+    return undefined;
+  }
+
+  return {
+    addr,
+    token,
+    mount: process.env.VELVET_VAULT_MOUNT || "secret",
+    path: process.env.VELVET_VAULT_PATH || "velvet"
+  };
 }

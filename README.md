@@ -65,6 +65,8 @@ For one-off local checks, process at most one queued job:
 npm run worker:once
 ```
 
+For production worker deployment, see `docs/DEPLOYMENT.md` and `Dockerfile.worker`.
+
 ## Available Routes
 
 - `/dashboard` - first-launch studio overview
@@ -81,7 +83,7 @@ Velvet is focused on:
 - ElevenLabs for music generation
 - YouTube login via Google OAuth for private uploads, thumbnails, metadata, and publishing workflows
 
-The setup UI saves keys through server routes. Secrets are encrypted with AES-GCM and stored in the gitignored `.velvet/` folder. Production deployments can set `VELVET_SECRET_PROVIDER=env` and provide provider secrets through the host vault/environment instead of writing local secret files.
+The setup UI saves keys through server routes. Secrets are encrypted with AES-GCM and stored in the gitignored `.velvet/` folder. Production deployments can set `VELVET_SECRET_PROVIDER=env` for host-provided secrets or `VELVET_SECRET_PROVIDER=vault` for a HashiCorp Vault-compatible KV v2 store.
 
 ## Upload History
 
@@ -135,6 +137,7 @@ Important variables include:
 - `DATABASE_URL`
 - `VELVET_DATABASE_MODE` set to `postgres` to mirror runtime records into the configured database
 - `VELVET_SECRET_PROVIDER` set to `env` to read secrets from deployment environment variables
+- `VELVET_SECRET_PROVIDER=vault`, `VELVET_VAULT_ADDR`, `VELVET_VAULT_TOKEN`, `VELVET_VAULT_MOUNT`, and `VELVET_VAULT_PATH` for managed Vault-backed secrets
 - `VELVET_MASTER_KEY` or `TOKEN_ENCRYPTION_KEY` for deterministic local secret encryption
 - `YOUTUBE_REFRESH_TOKEN` for env-backed YouTube OAuth token storage
 - `VELVET_OPENAI_INPUT_PER_1M_TOKENS_USD`, `VELVET_OPENAI_OUTPUT_PER_1M_TOKENS_USD`, `VELVET_ELEVENLABS_PER_MINUTE_USD`, `VELVET_FFMPEG_PER_RENDER_MINUTE_USD`, and `VELVET_YOUTUBE_UPLOAD_PER_VIDEO_USD` for optional local cost estimates
@@ -144,8 +147,8 @@ Important variables include:
 ## Current Limitations
 
 - The local `.velvet/` database is intended for development and single-user desktop use.
-- Long-running music, render, and upload work is queued for the local worker process. A production deployment still needs a managed worker runtime.
-- The render endpoint creates a render manifest and will attempt FFmpeg MP4 composition when FFmpeg is on PATH or `FFMPEG_PATH` points to `ffmpeg.exe`.
+- Long-running music, render, and upload work is queued for the worker process. Production should run the worker as a managed service/container.
+- The render endpoint creates a render manifest and renders a full-album MP4 when FFmpeg is available.
 - YouTube upload requires a real rendered MP4 path and configured Google OAuth credentials.
 - User-provided Supabase/Postgres connections can be saved, validated, initialized, synced, and used as an opt-in hosted mirror.
 - Budget guardrails enforce local action limits, and cost estimates depend on user-provided rates rather than hardcoded provider pricing.

@@ -892,7 +892,7 @@ function SettingsWorkspace() {
         <section className="panel rounded-xl p-4">
           <SectionTitle label="Onboarding" />
           <p className="mt-2 max-w-3xl text-xs leading-5 text-[var(--text-secondary)]">
-            Connect the minimum services Velvet needs: ChatGPT for creative planning, ElevenLabs for music, and YouTube for private review uploads. Secrets are shown here as setup fields only until the secure server-side vault is implemented.
+            Connect the minimum services Velvet needs: ChatGPT for creative planning, ElevenLabs for music, and YouTube for private review uploads. Secrets are stored encrypted locally or read from production environment vaults.
           </p>
 
           <div className="mt-3 grid grid-cols-[120px_1fr] gap-3">
@@ -1078,7 +1078,7 @@ function SettingsWorkspace() {
               Server-side only
             </div>
             <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
-              Real keys and OAuth tokens must be encrypted and stored server-side. Setup can be saved locally as draft state before the vault is wired.
+              Real keys and OAuth tokens are encrypted for local use, or read from production environment-backed secret storage when configured.
             </p>
             </div>
             <button

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { databasePath, ensureVelvetDir } from "./paths";
 import { estimateUsageCost } from "./costs";
+import { mergeVelvetDatabases } from "./database-merge";
 import { readVelvetDatabase, syncVelvetDatabase } from "./providers/postgres";
 import { readSecret } from "./secrets";
 import type { JobRecord, ProjectRecord, PromptRecord, SetupRecord, UsageRecord, VelvetDatabase } from "./types";
@@ -50,10 +51,10 @@ export async function readDatabase(): Promise<VelvetDatabase> {
 
   try {
     const hostedDatabase = await readVelvetDatabase(connectionString);
-    return {
-      ...hostedDatabase,
-      setup: localDatabase.setup
-    };
+    const mergedDatabase = mergeVelvetDatabases(localDatabase, hostedDatabase);
+    await writeLocalDatabase(mergedDatabase);
+    await syncVelvetDatabase(connectionString, mergedDatabase).catch(() => undefined);
+    return mergedDatabase;
   } catch {
     return localDatabase;
   }
