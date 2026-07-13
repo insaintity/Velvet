@@ -296,9 +296,13 @@ function SettingsWorkspace() {
 
           <div className="mt-3 grid grid-cols-5 gap-2">
             {onboardingSteps.map((step, index) => (
-              <div key={step} className="rounded-lg border border-[var(--border)] bg-white/[0.035] p-2.5">
-                <div className="tabular text-xs text-[var(--rose-soft)]">0{index + 1}</div>
-                <div className="mt-1.5 text-[11px] font-medium leading-4">{step}</div>
+              <div
+                key={step}
+                data-testid="onboarding-step"
+                className="flex h-12 flex-col justify-center rounded-lg border border-[var(--border)] bg-white/[0.035] px-3"
+              >
+                <div className="tabular text-[11px] leading-none text-[var(--rose-soft)]">0{index + 1}</div>
+                <div className="mt-1.5 truncate text-[11px] font-medium leading-none">{step}</div>
               </div>
             ))}
           </div>

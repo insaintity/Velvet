@@ -34,6 +34,24 @@ test.describe("Velvet Coda dashboard", () => {
     await expect(page.getByRole("button", { name: "Save Setup" })).toBeVisible();
   });
 
+  test("keeps onboarding step labels inside their boxes", async ({ page }) => {
+    await page.goto("/settings");
+
+    const visibleStepCards = page.locator('[data-testid="onboarding-step"]');
+    await expect(visibleStepCards).toHaveCount(5);
+    const cardsFit = await visibleStepCards.evaluateAll((cards) =>
+      cards.every((card) => {
+        const bounds = card.getBoundingClientRect();
+        return Array.from(card.children).every((child) => {
+          const childBounds = child.getBoundingClientRect();
+          return childBounds.top >= bounds.top && childBounds.bottom <= bounds.bottom;
+        });
+      })
+    );
+
+    expect(cardsFit).toBe(true);
+  });
+
   test("shows upload history with prompt archive fields", async ({ page }) => {
     await page.goto("/history");
 
