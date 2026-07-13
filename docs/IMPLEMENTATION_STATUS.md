@@ -8,12 +8,11 @@ Implemented:
 - Next.js app shell
 - Velvet Coda design tokens
 - Sidebar and top bar
-- Album workspace
-- Track list and selected-track detail
-- Right-side workflow panels
-- Permanent bottom player with Zustand state
-- New-project wizard
-- Seeded Velvet Masquerade demo content
+- First-launch dashboard
+- Empty projects state
+- Provider setup screen
+- Permanent bottom player with disabled empty state and Zustand shell state
+- New-project brief flow
 - Documentation spine
 
 Pending:

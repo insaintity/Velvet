@@ -27,3 +27,5 @@ Never replace the interface with:
 - Generic administration layouts
 
 Build in controlled phases. Do not begin paid provider calls until the interface, data model and workflow are stable.
+
+The product should open as a brand-new studio unless real user data exists. Avoid seeded projects, fake completed jobs, fake provider statuses, fake audio and fake usage metrics.
