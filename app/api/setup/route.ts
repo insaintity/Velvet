@@ -54,6 +54,13 @@ export async function POST(request: Request) {
     budget: {
       maxTracksPerRun: Number(body.maxTracksPerRun) || 10,
       maxRenderAttemptsPerProject: Number(body.maxRenderAttemptsPerProject) || 5
+    },
+    pricing: {
+      openaiInputPerMillionTokens: Number(body.openaiInputPerMillionTokens) || undefined,
+      openaiOutputPerMillionTokens: Number(body.openaiOutputPerMillionTokens) || undefined,
+      elevenLabsPerMinute: Number(body.elevenLabsPerMinute) || undefined,
+      ffmpegPerRenderMinute: Number(body.ffmpegPerRenderMinute) || undefined,
+      youtubeUploadPerVideo: Number(body.youtubeUploadPerVideo) || undefined
     }
   });
 

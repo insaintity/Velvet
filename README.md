@@ -19,6 +19,7 @@ The app opens like a brand-new workspace and guides the user through setup befor
 - Lets the user edit project title, concept, generation prompts, and YouTube metadata before generation/upload.
 - Stores projects, prompt versions, jobs, and upload records in a local project database.
 - Records provider usage units for blueprint, music, render, and upload operations.
+- Estimates provider and render costs when optional local rates are configured.
 - Exchanges YouTube OAuth codes for tokens and stores refresh tokens encrypted.
 - Provides backend routes for ElevenLabs music generation, render manifests, and YouTube uploads.
 - Provides a fixed, no-scroll studio interface with dark midnight styling.
@@ -120,6 +121,7 @@ Important variables include:
 - `SUPABASE_URL`
 - `DATABASE_URL`
 - `VELVET_DATABASE_MODE` set to `postgres` to mirror runtime records into the configured database
+- `VELVET_OPENAI_INPUT_PER_1M_TOKENS_USD`, `VELVET_OPENAI_OUTPUT_PER_1M_TOKENS_USD`, `VELVET_ELEVENLABS_PER_MINUTE_USD`, `VELVET_FFMPEG_PER_RENDER_MINUTE_USD`, and `VELVET_YOUTUBE_UPLOAD_PER_VIDEO_USD` for optional local cost estimates
 - `WORKER_SECRET`
 
 ## Current Limitations
@@ -129,7 +131,7 @@ Important variables include:
 - The render endpoint creates a render manifest and will attempt FFmpeg MP4 composition when FFmpeg is on PATH or `FFMPEG_PATH` points to `ffmpeg.exe`.
 - YouTube upload requires a real rendered MP4 path and configured Google OAuth credentials.
 - User-provided Supabase/Postgres connections can be saved, validated, initialized, synced, and used as an opt-in hosted mirror.
-- Budget guardrails enforce local action limits, but pricing/cost calculations are not yet attached.
+- Budget guardrails enforce local action limits, and cost estimates depend on user-provided rates rather than hardcoded provider pricing.
 
 ## Design Direction
 

@@ -33,6 +33,13 @@ export type SetupRecord = {
     maxTracksPerRun: number;
     maxRenderAttemptsPerProject: number;
   };
+  pricing?: {
+    openaiInputPerMillionTokens?: number;
+    openaiOutputPerMillionTokens?: number;
+    elevenLabsPerMinute?: number;
+    ffmpegPerRenderMinute?: number;
+    youtubeUploadPerVideo?: number;
+  };
   updatedAt?: string;
 };
 
@@ -126,6 +133,8 @@ export type UsageRecord = {
   projectId?: string;
   operation: string;
   units: Record<string, number>;
+  estimatedCostUsd?: number;
+  costStatus?: "estimated" | "rate-not-set";
   createdAt: string;
 };
 

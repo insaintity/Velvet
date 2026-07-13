@@ -30,6 +30,7 @@ Implemented:
 - Job queue records for blueprint, music, render and YouTube upload work
 - Provider usage records for OpenAI, ElevenLabs, FFmpeg, and YouTube operations
 - Budget guardrails for track count and render attempts
+- Configurable cost estimates for OpenAI, ElevenLabs, FFmpeg, and YouTube usage records
 - Upload privacy selector
 - Same-origin guard on mutating API routes
 - ElevenLabs music generation endpoint for blueprint tracks
@@ -51,5 +52,4 @@ Pending:
 - Full hosted database primary mode with conflict handling
 - Durable background workers outside the request lifecycle
 - Full FFmpeg MP4 rendering requires FFmpeg on PATH or `FFMPEG_PATH`
-- Provider pricing and cost accounting
 - Production vault/KMS integration

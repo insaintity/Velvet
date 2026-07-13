@@ -68,6 +68,11 @@ type SetupForm = {
   workerSecret: string;
   maxTracksPerRun: string;
   maxRenderAttemptsPerProject: string;
+  openaiInputPerMillionTokens: string;
+  openaiOutputPerMillionTokens: string;
+  elevenLabsPerMinute: string;
+  ffmpegPerRenderMinute: string;
+  youtubeUploadPerVideo: string;
 };
 
 type ClientStatus = {
@@ -125,6 +130,8 @@ type ClientUsage = {
   provider: string;
   operation: string;
   units: Record<string, number>;
+  estimatedCostUsd?: number;
+  costStatus?: string;
 };
 
 type ClientUpload = {
@@ -571,7 +578,10 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
           <div className="mt-3 space-y-2">
             {(usage.length ? usage : [{ id: "empty", provider: "ready", operation: "No usage recorded yet.", units: {} }]).slice(0, 3).map((item) => (
               <div key={item.id} className="rounded-lg border border-[var(--border)] bg-white/[0.035] p-3 text-xs text-[var(--text-secondary)]">
-                <div className="uppercase tracking-[0.12em] text-[var(--rose-soft)]">{item.provider}</div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="uppercase tracking-[0.12em] text-[var(--rose-soft)]">{item.provider}</div>
+                  {item.costStatus ? <div className="text-[var(--text-muted)]">{formatCost(item)}</div> : null}
+                </div>
                 <div className="mt-1">{item.operation}</div>
               </div>
             ))}
@@ -647,6 +657,14 @@ function actionLabel(action: "approve" | "music" | "render" | "upload") {
     render: "Rendering package",
     upload: "Uploading to YouTube"
   }[action];
+}
+
+function formatCost(usage: ClientUsage) {
+  if (usage.costStatus === "estimated" && typeof usage.estimatedCostUsd === "number") {
+    return `$${usage.estimatedCostUsd.toFixed(4)}`;
+  }
+
+  return "Rate not set";
 }
 
 function HistoryWorkspace() {
@@ -769,7 +787,12 @@ function SettingsWorkspace() {
     storageBucket: "velvet-assets",
     workerSecret: "",
     maxTracksPerRun: "10",
-    maxRenderAttemptsPerProject: "5"
+    maxRenderAttemptsPerProject: "5",
+    openaiInputPerMillionTokens: "",
+    openaiOutputPerMillionTokens: "",
+    elevenLabsPerMinute: "",
+    ffmpegPerRenderMinute: "",
+    youtubeUploadPerVideo: ""
   });
 
   useEffect(() => {
@@ -795,7 +818,12 @@ function SettingsWorkspace() {
           supabasePublishableKey: setup.worker?.supabasePublishableKey ?? current.supabasePublishableKey,
           storageBucket: setup.worker?.storageBucket ?? current.storageBucket,
           maxTracksPerRun: String(setup.budget?.maxTracksPerRun ?? current.maxTracksPerRun),
-          maxRenderAttemptsPerProject: String(setup.budget?.maxRenderAttemptsPerProject ?? current.maxRenderAttemptsPerProject)
+          maxRenderAttemptsPerProject: String(setup.budget?.maxRenderAttemptsPerProject ?? current.maxRenderAttemptsPerProject),
+          openaiInputPerMillionTokens: String(setup.pricing?.openaiInputPerMillionTokens ?? current.openaiInputPerMillionTokens),
+          openaiOutputPerMillionTokens: String(setup.pricing?.openaiOutputPerMillionTokens ?? current.openaiOutputPerMillionTokens),
+          elevenLabsPerMinute: String(setup.pricing?.elevenLabsPerMinute ?? current.elevenLabsPerMinute),
+          ffmpegPerRenderMinute: String(setup.pricing?.ffmpegPerRenderMinute ?? current.ffmpegPerRenderMinute),
+          youtubeUploadPerVideo: String(setup.pricing?.youtubeUploadPerVideo ?? current.youtubeUploadPerVideo)
         }));
       })
       .catch(() => setSetupMessage("Setup status is unavailable."));
@@ -1025,6 +1053,15 @@ function SettingsWorkspace() {
                     <Field label="Max tracks/run" placeholder="10" value={setupForm.maxTracksPerRun} onChange={(value) => updateSetupForm("maxTracksPerRun", value)} />
                     <Field label="Max render attempts" placeholder="5" value={setupForm.maxRenderAttemptsPerProject} onChange={(value) => updateSetupForm("maxRenderAttemptsPerProject", value)} />
                   </div>
+                  <AdvancedSetup label="Cost estimate rates">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="OpenAI input / 1M" placeholder="USD" value={setupForm.openaiInputPerMillionTokens} onChange={(value) => updateSetupForm("openaiInputPerMillionTokens", value)} help="Optional. Used only for local cost estimates." />
+                      <Field label="OpenAI output / 1M" placeholder="USD" value={setupForm.openaiOutputPerMillionTokens} onChange={(value) => updateSetupForm("openaiOutputPerMillionTokens", value)} help="Optional. Used only for local cost estimates." />
+                      <Field label="ElevenLabs / min" placeholder="USD" value={setupForm.elevenLabsPerMinute} onChange={(value) => updateSetupForm("elevenLabsPerMinute", value)} help="Optional. Match this to your plan or internal budget." />
+                      <Field label="FFmpeg / min" placeholder="USD" value={setupForm.ffmpegPerRenderMinute} onChange={(value) => updateSetupForm("ffmpegPerRenderMinute", value)} help="Optional compute-rate estimate for rendered minutes." />
+                      <Field label="YouTube / upload" placeholder="USD" value={setupForm.youtubeUploadPerVideo} onChange={(value) => updateSetupForm("youtubeUploadPerVideo", value)} help="Optional fixed operational estimate per upload." />
+                    </div>
+                  </AdvancedSetup>
                 </SetupCard>
               </div>
             ) : null}

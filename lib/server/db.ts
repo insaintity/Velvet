@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { databasePath, ensureVelvetDir } from "./paths";
+import { estimateUsageCost } from "./costs";
 import { readVelvetDatabase, syncVelvetDatabase } from "./providers/postgres";
 import { readSecret } from "./secrets";
 import type { JobRecord, ProjectRecord, PromptRecord, SetupRecord, UsageRecord, VelvetDatabase } from "./types";
@@ -127,9 +128,11 @@ export async function updateProject(id: string, patch: Partial<ProjectRecord>) {
 
 export async function addUsage(usage: Omit<UsageRecord, "id" | "createdAt">) {
   const database = await readDatabase();
+  const cost = estimateUsageCost(usage, database.setup);
   const record: UsageRecord = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
+    ...cost,
     ...usage
   };
   database.usage.unshift(record);

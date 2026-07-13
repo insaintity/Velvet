@@ -96,7 +96,15 @@ export async function POST(request: Request) {
       : item
   );
   await writeDatabase(latest);
-  await addUsage({ provider: "ffmpeg", projectId, operation: "render", units: { renders: renderStatus === "rendered" ? 1 : 0 } });
+  await addUsage({
+    provider: "ffmpeg",
+    projectId,
+    operation: "render",
+    units: {
+      renders: renderStatus === "rendered" ? 1 : 0,
+      seconds: project.generatedTracks?.reduce((sum, track) => sum + track.durationSeconds, 0) ?? 0
+    }
+  });
   await updateJob(job.id, { status: renderStatus === "rendered" ? "completed" : "blocked", message, result: { manifestPath: filePath, videoPath } });
 
   return NextResponse.json({ manifest, manifestPath: filePath, videoPath, status: renderStatus, message });

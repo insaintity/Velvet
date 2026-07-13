@@ -8,4 +8,4 @@
 - ElevenLabs music generation depends on the live provider endpoint and a valid key.
 - The render endpoint creates a manifest and attempts MP4 composition when FFmpeg is on PATH or `FFMPEG_PATH` points to `ffmpeg.exe`.
 - YouTube upload is implemented as an API endpoint, but requires a real MP4 export path and configured OAuth credentials.
-- Usage units are recorded and local action limits are enforced, but provider pricing is not yet calculated.
+- Usage units are recorded and local action limits are enforced. Cost estimates require user-provided rates because provider pricing varies by plan and can change.
