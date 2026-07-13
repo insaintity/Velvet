@@ -11,7 +11,7 @@ Implemented:
 - First-launch dashboard
 - Empty projects state
 - Provider setup screen
-- Provider-agnostic AI connector schema for API keys, OpenAI-compatible endpoints and local CLIs
+- Focused onboarding schema for ChatGPT/OpenAI, ElevenLabs, YouTube, storage and worker setup
 - Permanent bottom player with disabled empty state and Zustand shell state
 - New-project brief flow
 - Documentation spine

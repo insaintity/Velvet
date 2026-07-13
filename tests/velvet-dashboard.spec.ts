@@ -21,16 +21,16 @@ test.describe("Velvet Coda dashboard", () => {
 
     await expect(page.getByRole("heading", { name: "Describe the album." })).toBeVisible();
     await expect(page.getByRole("button", { name: "Create Blueprint" })).toBeVisible();
-    await expect(page.getByText("API and CLI provider calls stay blocked until approved.")).toBeVisible();
+    await expect(page.getByText("ChatGPT and ElevenLabs calls stay blocked until approved.")).toBeVisible();
   });
 
-  test("shows provider-agnostic AI connection setup", async ({ page }) => {
+  test("shows focused onboarding for ChatGPT, ElevenLabs and YouTube", async ({ page }) => {
     await page.goto("/settings");
 
-    await expect(page.getByText("Add AI connection")).toBeVisible();
-    await expect(page.getByText("OpenAI / ChatGPT")).toBeVisible();
-    await expect(page.getByText("Claude", { exact: true })).toBeVisible();
-    await expect(page.getByText("OpenAI-compatible", { exact: true })).toBeVisible();
-    await expect(page.getByText("Local command", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Onboarding" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "ChatGPT / OpenAI" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "ElevenLabs" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "YouTube" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save Setup" })).toBeVisible();
   });
 });

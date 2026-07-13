@@ -19,11 +19,11 @@ Open `http://localhost:3000/dashboard`.
 - Velvet Coda visual system with dark plum/navy panels, rose/violet/blue lighting and editorial serif branding
 - Permanent sidebar, top project bar and bottom audio player
 - First-run dashboard with setup guidance and a single clear album creation path
-- Provider-agnostic AI connection setup for API keys, OpenAI-compatible endpoints and local CLI commands
+- Focused onboarding for ChatGPT/OpenAI, ElevenLabs, YouTube, storage and worker setup
 - New project brief flow at `/projects/new`
 - Empty projects and disabled player states until real albums exist
 - Zustand-powered player shell state
 
 ## Provider State
 
-Provider credentials are not connected in Phase 1. The interface shows empty and not-connected states, and it never claims that AI APIs, local CLIs, image tools, FFmpeg or YouTube work has happened.
+Provider credentials are not connected in Phase 1. The interface shows empty and not-connected states, and it never claims that ChatGPT/OpenAI, ElevenLabs, image tools, FFmpeg or YouTube work has happened.

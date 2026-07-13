@@ -1,6 +1,6 @@
 # OpenAI Integration
 
-OpenAI calls must stay server-side. OpenAI is a first-class connector, not the only planning option. Phase 2 will add:
+OpenAI calls must stay server-side. ChatGPT/OpenAI is the focused AI runtime for planning, images and metadata. Phase 2 will add:
 
 - Album blueprint generation
 - YouTube package drafts

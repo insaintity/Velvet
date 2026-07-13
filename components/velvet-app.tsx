@@ -4,10 +4,9 @@ import {
   ArrowRight,
   ChevronDown,
   Circle,
-  Code2,
-  Cpu,
-  ExternalLink,
+  Database,
   KeyRound,
+  Music2,
   MoreHorizontal,
   Pause,
   Play,
@@ -16,12 +15,13 @@ import {
   ShieldCheck,
   Sparkles,
   UploadCloud,
-  Volume2
+  Volume2,
+  Youtube
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { aiConnectors, mediaConnectors, navItems, preferenceDefaults, setupSteps } from "@/lib/app-data";
+import { navItems, onboardingSteps, safetyDefaults, setupSteps } from "@/lib/app-data";
 import { formatDuration } from "@/lib/time";
 import { usePlayerStore } from "@/store/player-store";
 
@@ -77,7 +77,7 @@ function Sidebar({ pathname }: { pathname: string }) {
       <div className="space-y-3">
         <div className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
           <div className="mb-3 text-[11px] font-semibold tracking-[0.18em] text-[var(--text-muted)]">SETUP</div>
-          {["AI provider", "Music provider", "Publishing"].map((service) => (
+          {["ChatGPT", "ElevenLabs", "YouTube"].map((service) => (
             <div key={service} className="mb-2 flex items-center justify-between text-xs text-[var(--text-secondary)] last:mb-0">
               <span>{service}</span>
               <span className="rounded-full border border-[var(--border)] bg-black/10 px-2 py-0.5 text-[var(--text-muted)]">Not connected</span>
@@ -171,7 +171,7 @@ function DashboardWorkspace() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link href="/settings" className="flex h-12 items-center gap-2 rounded-lg border border-[var(--border)] bg-white/[0.05] px-5 text-[var(--text-secondary)]">
-              Connect AI
+              Start Setup
             </Link>
           </div>
         </div>
@@ -220,79 +220,106 @@ function SettingsWorkspace() {
     <div className="velvet-scroll min-h-0 flex-1 overflow-y-auto p-5">
       <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-5">
         <section className="panel rounded-xl p-5">
-          <SectionTitle label="AI Access" />
+          <SectionTitle label="Onboarding" />
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-            Velvet Coda should work with whatever serious AI access the studio already has: official APIs, OpenAI-compatible hosts or local CLI tools. Connections are empty until a real server-side secret store and worker runner are wired in.
+            Connect the minimum services Velvet Coda needs: ChatGPT for creative planning, ElevenLabs for music, and YouTube for private review uploads. Secrets are shown here as setup fields only until the secure server-side vault is implemented.
           </p>
-          <div className="mt-5 rounded-xl border border-[var(--border)] bg-black/20 p-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Code2 className="h-4 w-4 text-[var(--rose-soft)]" />
-              Add AI connection
-            </div>
-            <div className="mt-4 grid grid-cols-[1fr_180px] gap-3">
-              <label className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                Name
-                <input className="mt-2 h-10 w-full rounded-lg border border-[var(--border)] bg-white/[0.035] px-3 text-sm normal-case tracking-normal text-white outline-none" placeholder="Claude CLI, OpenAI, local model..." />
-              </label>
-              <label className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                Method
-                <select className="mt-2 h-10 w-full rounded-lg border border-[var(--border)] bg-[#101122] px-3 text-sm normal-case tracking-normal text-white outline-none">
-                  <option>API key</option>
-                  <option>OpenAI-compatible endpoint</option>
-                  <option>Local CLI command</option>
-                </select>
-              </label>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              <input className="h-10 rounded-lg border border-[var(--border)] bg-white/[0.035] px-3 text-sm text-white outline-none" placeholder="Model name" />
-              <input className="h-10 rounded-lg border border-[var(--border)] bg-white/[0.035] px-3 text-sm text-white outline-none" placeholder="Base URL or command" />
-              <input className="h-10 rounded-lg border border-[var(--border)] bg-white/[0.035] px-3 text-sm text-white outline-none" placeholder="Secret env var name" />
-            </div>
-            <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
-              <span>Store references like ANTHROPIC_API_KEY or OPENAI_API_KEY, not raw secrets, until the vault is implemented.</span>
-              <button className="h-9 shrink-0 rounded-lg border border-[var(--border)] bg-white/[0.05] px-4 text-sm text-[var(--text-secondary)]">
-                Save Draft
-              </button>
-            </div>
-          </div>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            {aiConnectors.map((provider) => (
-              <div key={provider.name} className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-medium">{provider.name}</div>
-                    <div className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--rose-soft)]">{provider.kind}</div>
-                  </div>
-                  <Cpu className="h-5 w-5 text-[var(--text-muted)]" />
-                </div>
-                <p className="mt-3 min-h-[42px] text-sm leading-5 text-[var(--text-muted)]">{provider.detail}</p>
-                <button className="mt-4 h-9 rounded-lg border border-[var(--border)] bg-black/10 px-4 text-sm text-[var(--text-secondary)]">
-                  Configure
-                </button>
+
+          <div className="mt-5 grid grid-cols-5 gap-2">
+            {onboardingSteps.map((step, index) => (
+              <div key={step} className="rounded-lg border border-[var(--border)] bg-white/[0.035] p-3">
+                <div className="tabular text-xs text-[var(--rose-soft)]">0{index + 1}</div>
+                <div className="mt-2 text-xs font-medium leading-4">{step}</div>
               </div>
             ))}
           </div>
+
+          <div className="mt-5 space-y-4">
+            <SetupCard
+              icon={<KeyRound className="h-5 w-5" />}
+              title="ChatGPT / OpenAI"
+              body="Used for album blueprints, prompt revisions, artwork prompts, image generation and YouTube metadata."
+            >
+              <Field label="OpenAI API key" placeholder="sk-..." secret />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Planning model" placeholder="gpt-4.1" />
+                <Field label="Image model" placeholder="gpt-image-1" />
+              </div>
+            </SetupCard>
+
+            <SetupCard
+              icon={<Music2 className="h-5 w-5" />}
+              title="ElevenLabs"
+              body="Used only when approved track prompts are ready for music generation."
+            >
+              <Field label="ElevenLabs API key" placeholder="Enter key" secret />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Music model" placeholder="eleven-music" />
+                <Field label="Output format" placeholder="mp3_44100_128" />
+              </div>
+            </SetupCard>
+
+            <SetupCard
+              icon={<Youtube className="h-5 w-5" />}
+              title="YouTube"
+              body="Used for private uploads, thumbnail upload, metadata and scheduled publishing after approval."
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Google client ID" placeholder="Client ID" />
+                <Field label="Google client secret" placeholder="Client secret" secret />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Redirect URI" placeholder="http://localhost:3000/api/youtube/callback" />
+                <label className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                  Default privacy
+                  <select className="mt-2 h-10 w-full rounded-lg border border-[var(--border)] bg-[#101122] px-3 text-sm normal-case tracking-normal text-white outline-none">
+                    <option>Private</option>
+                    <option>Unlisted</option>
+                    <option>Scheduled</option>
+                  </select>
+                </label>
+              </div>
+            </SetupCard>
+
+            <SetupCard
+              icon={<Database className="h-5 w-5" />}
+              title="Storage & worker"
+              body="Needed later for generated audio, images, videos, logs and long-running jobs."
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Supabase URL" placeholder="https://..." />
+                <Field label="Storage bucket" placeholder="velvet-coda-assets" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Database URL" placeholder="postgres://..." secret />
+                <Field label="Worker secret" placeholder="Enter secret" secret />
+              </div>
+            </SetupCard>
+          </div>
+
           <div className="mt-5 rounded-xl border border-[rgba(239,99,152,0.22)] bg-[rgba(239,99,152,0.06)] p-4">
             <div className="flex items-center gap-2 text-sm font-medium">
               <KeyRound className="h-4 w-4 text-[var(--rose-soft)]" />
               Server-side only
             </div>
             <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-              API keys, bearer tokens and CLI credentials must be stored outside the browser. The UI can collect connection intent now; the secure vault and worker execution layer come next.
+              This screen defines the onboarding flow. Real keys must be encrypted and stored server-side before any request is made.
             </p>
+            <button className="mt-4 h-11 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 text-sm font-medium">
+              Save Setup
+            </button>
           </div>
         </section>
         <aside className="space-y-4">
           <aside className="panel rounded-xl p-5">
-            <SectionTitle label="Media & Publishing" />
+            <SectionTitle label="Required Services" />
             <div className="mt-4 space-y-3">
-              {mediaConnectors.map((item) => (
-                <div key={item.name} className="rounded-lg border border-[var(--border)] bg-white/[0.035] p-3">
+              {["ChatGPT / OpenAI", "ElevenLabs", "YouTube"].map((item) => (
+                <div key={item} className="rounded-lg border border-[var(--border)] bg-white/[0.035] p-3">
                   <div className="flex items-center justify-between gap-3 text-sm font-medium">
-                    {item.name}
-                    <ExternalLink className="h-4 w-4 text-[var(--text-muted)]" />
+                    {item}
+                    <span className="rounded-full border border-[var(--border)] bg-black/10 px-2 py-0.5 text-[11px] text-[var(--text-muted)]">Required</span>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">{item.detail}</p>
                 </div>
               ))}
             </div>
@@ -300,7 +327,7 @@ function SettingsWorkspace() {
           <aside className="panel rounded-xl p-5">
             <SectionTitle label="Safety Defaults" />
             <div className="mt-4 space-y-3">
-              {preferenceDefaults.map((item) => (
+            {safetyDefaults.map((item) => (
                 <div key={item} className="flex gap-3 rounded-lg border border-[var(--border)] bg-white/[0.035] p-3 text-sm text-[var(--text-secondary)]">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" />
                   {item}
@@ -338,7 +365,7 @@ function NewProjectFlow() {
         </section>
         <aside className="space-y-4">
           <EmptyPanel title="Optional" body="After the brief, Velvet Coda can ask for length, track count, vocals and workflow mode only if needed." />
-          <EmptyPanel title="Before generation" body="You will review the blueprint first. API and CLI provider calls stay blocked until approved." />
+          <EmptyPanel title="Before generation" body="You will review the blueprint first. ChatGPT and ElevenLabs calls stay blocked until approved." />
         </aside>
       </div>
     </div>
@@ -360,6 +387,46 @@ function EmptyPanel({ title, body, action, href }: { title: string; body: string
   );
 
   return href ? <Link href={href}>{content}</Link> : content;
+}
+
+function SetupCard({
+  icon,
+  title,
+  body,
+  children
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <article className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-4">
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[var(--border)] bg-black/15 text-[var(--rose-soft)]">
+          {icon}
+        </div>
+        <div>
+          <h3 className="font-medium">{title}</h3>
+          <p className="mt-1 text-sm leading-5 text-[var(--text-muted)]">{body}</p>
+        </div>
+      </div>
+      <div className="mt-4 space-y-3">{children}</div>
+    </article>
+  );
+}
+
+function Field({ label, placeholder, secret = false }: { label: string; placeholder: string; secret?: boolean }) {
+  return (
+    <label className="block text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">
+      {label}
+      <input
+        type={secret ? "password" : "text"}
+        className="mt-2 h-10 w-full rounded-lg border border-[var(--border)] bg-black/15 px-3 text-sm normal-case tracking-normal text-white outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-active)]"
+        placeholder={placeholder}
+      />
+    </label>
+  );
 }
 
 function BottomPlayer() {

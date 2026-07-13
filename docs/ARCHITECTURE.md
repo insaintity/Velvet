@@ -8,11 +8,11 @@ Future structure:
 - `apps/worker`: durable generation, render and upload jobs
 - `packages/ui`: shared visual primitives
 - `packages/database`: Supabase schema, RLS and typed queries
-- `packages/ai`: provider-agnostic planning workflows for APIs, compatible endpoints and local CLIs
+- `packages/ai`: ChatGPT/OpenAI planning, image and metadata workflows
 - `packages/integrations`: ElevenLabs and YouTube clients
 - `packages/media`: FFmpeg and FFprobe pipelines
 - `packages/shared`: common schemas, status enums and utilities
 
 Long-running operations must run in workers, not short-lived web requests.
 
-AI access should be connector based. A project may use OpenAI, ChatGPT/OpenAI-compatible APIs, Claude, a local CLI command or another configured model host as long as the connector normalizes requests into the album-planning contract.
+AI access is intentionally focused on ChatGPT/OpenAI for the launch path. ElevenLabs handles music generation and YouTube handles upload/publishing.

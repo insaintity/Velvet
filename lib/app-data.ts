@@ -16,70 +16,34 @@ export const navItems: NavItem[] = [
 
 export const setupSteps = [
   {
-    title: "Choose AI access",
-    body: "Use any supported API key, OpenAI-compatible endpoint or local CLI command.",
+    title: "Connect ChatGPT",
+    body: "Add an OpenAI API key for album planning, artwork prompts, image generation and YouTube metadata.",
+    href: "/settings"
+  },
+  {
+    title: "Connect ElevenLabs",
+    body: "Add an ElevenLabs key for music generation when track prompts are approved.",
     href: "/settings"
   },
   {
     title: "Connect YouTube",
-    body: "Optional for now. Private upload and publishing controls unlock after OAuth.",
-    href: "/settings/youtube"
-  },
-  {
-    title: "Create first album",
-    body: "Start with one natural-language brief. Velvet Coda will ask before any paid work.",
-    href: "/projects/new"
+    body: "Add Google OAuth details so Velvet Coda can upload privately when the album is ready.",
+    href: "/settings"
   }
 ];
 
-export const preferenceDefaults = [
-  "Bring your own AI provider",
-  "API keys stay server-side",
-  "CLI commands run through workers",
-  "Instrumental unless requested",
-  "Assisted workflow",
-  "Private upload review"
+export const onboardingSteps = [
+  "ChatGPT / OpenAI",
+  "ElevenLabs",
+  "YouTube",
+  "Storage & worker",
+  "Review"
 ];
 
-export const aiConnectors = [
-  {
-    name: "OpenAI / ChatGPT",
-    kind: "API key",
-    detail: "Use the official OpenAI API or any account key that supports the selected model."
-  },
-  {
-    name: "Claude",
-    kind: "API key or CLI",
-    detail: "Connect Anthropic by key, or point Velvet Coda at an installed Claude CLI."
-  },
-  {
-    name: "OpenAI-compatible",
-    kind: "Base URL + key",
-    detail: "Use compatible hosts by providing a base URL, model name and optional API key."
-  },
-  {
-    name: "Local command",
-    kind: "CLI",
-    detail: "Run a local tool such as claude, codex, ollama, lmstudio or a custom wrapper."
-  },
-  {
-    name: "Custom provider",
-    kind: "Manual config",
-    detail: "Define request shape later when a provider needs special handling."
-  }
-];
-
-export const mediaConnectors = [
-  {
-    name: "Music generation",
-    detail: "ElevenLabs Music, another music API or a local generation command."
-  },
-  {
-    name: "Image generation",
-    detail: "OpenAI images, another image API or an external workflow."
-  },
-  {
-    name: "Publishing",
-    detail: "YouTube OAuth when you are ready to upload privately or schedule."
-  }
+export const safetyDefaults = [
+  "Assisted workflow by default",
+  "Review blueprint before generation",
+  "Review tracks before rendering",
+  "Upload privately before publishing",
+  "Never run paid retries silently"
 ];

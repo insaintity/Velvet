@@ -1,24 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { providerConnectionExamples, providerConnectionSchema } from "./provider-config";
+import { defaultOnboardingConfig, onboardingConfigSchema } from "./provider-config";
 
-describe("provider connection schema", () => {
-  it("accepts API, OpenAI-compatible and CLI provider shapes", () => {
-    expect(providerConnectionExamples.every((example) => providerConnectionSchema.safeParse(example).success)).toBe(true);
-    expect(
-      providerConnectionSchema.safeParse({
-        method: "openAiCompatible",
-        label: "Custom host",
-        model: "studio-model",
-        baseUrl: "https://models.example.com/v1"
-      }).success
-    ).toBe(true);
+describe("onboarding config schema", () => {
+  it("accepts the default ChatGPT, ElevenLabs, YouTube and worker setup", () => {
+    expect(onboardingConfigSchema.safeParse(defaultOnboardingConfig).success).toBe(true);
   });
 
-  it("rejects incomplete CLI provider configs", () => {
+  it("rejects missing required model configuration", () => {
     expect(
-      providerConnectionSchema.safeParse({
-        method: "cli",
-        label: "Missing command"
+      onboardingConfigSchema.safeParse({
+        ...defaultOnboardingConfig,
+        openai: {
+          apiKeyEnvVar: "OPENAI_API_KEY",
+          imageModel: "gpt-image-1"
+        }
       }).success
     ).toBe(false);
   });
