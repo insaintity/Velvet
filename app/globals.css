@@ -217,6 +217,19 @@ input[aria-label="Track position"] {
   display: none;
 }
 
+.compact-density .new-media-workspace {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.compact-density .new-media-panel {
+  padding: 18px;
+}
+
+.compact-density .new-media-panel textarea {
+  min-height: 150px;
+}
+
 @keyframes studio-shimmer {
   from { background-position: 100% 0; }
   to { background-position: -100% 0; }

@@ -89,6 +89,12 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByText("ChatGPT and ElevenLabs calls stay blocked until approved.")).toBeVisible();
     await expect(page.getByRole("link", { name: "New Media" })).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("link", { name: "Projects" })).not.toHaveAttribute("aria-current", "page");
+
+    await page.getByRole("button", { name: "Display options" }).click();
+    const displayMenu = page.getByRole("menu", { name: "Display density" });
+    await expect(displayMenu).toBeVisible();
+    await displayMenu.getByRole("menuitemradio", { name: "Compact" }).click();
+    await expect(page.locator("main")).toHaveClass(/compact-density/);
   });
 
   test("builds an editable brief with Prompt Producer", async ({ page }) => {

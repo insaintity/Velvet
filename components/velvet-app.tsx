@@ -312,7 +312,17 @@ function isActiveNavItem(pathname: string, href: string) {
 
 function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensity }: { pageTitle: string; setup: SetupOverview; onOpenCommand: () => void; compactDensity: boolean; onToggleDensity: () => void }) {
   const [privateAccessEnabled, setPrivateAccessEnabled] = useState(false);
+  const [displayMenuOpen, setDisplayMenuOpen] = useState(false);
+  const displayMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => { fetch("/api/auth/status").then((response) => response.json()).then((body) => setPrivateAccessEnabled(body.enabled === true)).catch(() => undefined); }, []);
+  useEffect(() => {
+    if (!displayMenuOpen) return;
+    const close = (event: MouseEvent) => {
+      if (!displayMenuRef.current?.contains(event.target as Node)) setDisplayMenuOpen(false);
+    };
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [displayMenuOpen]);
 
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -329,7 +339,51 @@ function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensi
         <span className="text-[var(--text-primary)]">{pageTitle}</span>
       </div>
       <div className="flex items-center gap-3">
-        <button onClick={onToggleDensity} title={compactDensity ? "Use comfortable density" : "Use compact density"} aria-label={compactDensity ? "Use comfortable density" : "Use compact density"} aria-pressed={compactDensity} className={`glass-control grid h-9 w-9 place-items-center rounded-lg ${compactDensity ? "text-[var(--rose-soft)]" : "text-[var(--text-muted)]"}`}><SlidersHorizontal className="h-4 w-4" /></button>
+        <div ref={displayMenuRef} className="relative">
+          <button
+            onClick={() => setDisplayMenuOpen((current) => !current)}
+            title="Display options"
+            aria-label="Display options"
+            aria-haspopup="menu"
+            aria-expanded={displayMenuOpen}
+            className={`glass-control grid h-9 w-9 place-items-center rounded-lg ${displayMenuOpen || compactDensity ? "text-[var(--rose-soft)]" : "text-[var(--text-muted)]"}`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </button>
+          <AnimatePresence>
+            {displayMenuOpen ? (
+              <motion.div
+                role="menu"
+                aria-label="Display density"
+                className="panel prompt-producer-dialog absolute right-0 top-11 z-40 w-52 overflow-hidden rounded-lg p-1.5"
+                initial={{ opacity: 0, y: -5, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                transition={{ duration: 0.14 }}
+              >
+                {([false, true] as const).map((compact) => {
+                  const active = compactDensity === compact;
+                  return (
+                    <button
+                      key={compact ? "compact" : "comfortable"}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={active}
+                      onClick={() => {
+                        if (!active) onToggleDensity();
+                        setDisplayMenuOpen(false);
+                      }}
+                      className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm text-[var(--text-secondary)] hover:bg-white/[.06] hover:text-white"
+                    >
+                      <span className="w-4">{active ? <Check className="h-4 w-4 text-[var(--rose-soft)]" /> : null}</span>
+                      {compact ? "Compact" : "Comfortable"}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
         <button onClick={onOpenCommand} title="Open command palette" aria-label="Open command palette" className="glass-control grid h-9 w-9 place-items-center rounded-lg text-[var(--text-muted)] hover:text-white">
           <Search className="h-4 w-4" />
         </button>
@@ -1520,9 +1574,9 @@ function NewProjectFlow() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 items-center overflow-hidden p-3 lg:p-5">
+    <div className="new-media-workspace flex min-h-0 flex-1 items-center overflow-hidden p-3 lg:p-5">
       <div className={`mx-auto grid w-full grid-cols-1 gap-4 xl:gap-5 ${promptProducerOpen ? "max-w-[1200px] xl:grid-cols-[minmax(0,1fr)_380px]" : "max-w-[1120px] xl:grid-cols-[1fr_340px]"}`}>
-        <section className="panel glass-panel-strong rounded-xl p-6">
+        <section className="new-media-panel panel glass-panel-strong rounded-xl p-6">
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--rose-soft)]">New media</div>
           <h1 className="mt-2 text-[38px] font-semibold leading-[1.08] text-white">Describe the song or album.</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
