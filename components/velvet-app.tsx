@@ -99,6 +99,8 @@ export function VelvetApp() {
 type SetupForm = {
   openaiApiKey: string;
   elevenLabsApiKey: string;
+  googleClientId: string;
+  googleClientSecret: string;
   planningModel: string;
   imageModel: string;
   musicModel: string;
@@ -1156,6 +1158,8 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
   const [setupForm, setSetupForm] = useState<SetupForm>({
     openaiApiKey: "",
     elevenLabsApiKey: "",
+    googleClientId: "",
+    googleClientSecret: "",
     planningModel: "gpt-4.1",
     imageModel: "gpt-image-1",
     musicModel: "eleven-music",
@@ -1234,6 +1238,12 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
     });
     setSavedNotice(response.ok);
     setSetupMessage(response.ok ? "Setup saved. Run tests to verify provider keys." : "Setup could not be saved.");
+    return response.ok;
+  }
+
+  async function connectYouTube() {
+    setSetupMessage("Saving YouTube connection details...");
+    if (await saveSetup()) window.location.assign("/api/youtube/login");
   }
 
   async function validateProvider(provider: "openai" | "elevenlabs" | "database" | "storage") {
@@ -1378,16 +1388,20 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
                   body="Connect with Google OAuth. Velvet will request permission to upload videos and read channel identity."
                   status={formatProviderStatus(providerStatus.youtube, setup.services[2]?.ready)}
                 >
-                  <Link
-                    href="/api/youtube/login"
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Google OAuth client ID" placeholder="...apps.googleusercontent.com" value={setupForm.googleClientId} onChange={(value) => updateSetupForm("googleClientId", value)} help="Create a Desktop app OAuth client in Google Cloud." />
+                    <Field label="Google OAuth client secret" placeholder="Enter secret" secret value={setupForm.googleClientSecret} onChange={(value) => updateSetupForm("googleClientSecret", value)} help="Encrypted locally and never returned to the browser." />
+                  </div>
+                  <button
+                    onClick={connectYouTube}
                     title="Connects your channel through Google OAuth. Velvet never asks for your YouTube password."
                     className="flex h-9 items-center justify-center gap-2 rounded-lg bg-[rgba(255,0,51,0.84)] px-4 text-sm font-medium text-white shadow-[0_10px_26px_rgba(255,0,51,0.14)]"
                   >
                     <Youtube className="h-4 w-4" />
                     Login to YouTube
-                  </Link>
+                  </button>
                   <p className="text-xs leading-5 text-[var(--text-muted)]">
-                    OAuth client ID, client secret, and redirect URI live in server environment variables.
+                    Create a Desktop app OAuth client in Google Cloud. Velvet handles its local redirect address automatically.
                   </p>
                 </SetupCard>
                 <div className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
@@ -1525,7 +1539,7 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
 function YouTubeStatusNotice({ status }: { status: string }) {
   const message =
     status === "missing_config"
-      ? "YouTube login needs GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and YOUTUBE_REDIRECT_URI in the server environment."
+      ? "Enter your Google OAuth client ID and secret in YouTube setup, then try again. Velvet supplies the redirect URI automatically."
       : status === "authorized_pending_storage"
         ? "YouTube authorized successfully. Token exchange and encrypted storage are the next backend step."
         : status === "connected"

@@ -3,7 +3,15 @@ import { decryptSecret, encryptSecret, type EncryptedValue } from "./crypto";
 import { ensureVelvetDir, secretsPath } from "./paths";
 import type { ProviderName } from "./types";
 
-type SecretName = ProviderName | "youtubeRefreshToken" | "databaseUrl" | "workerSecret" | "supabaseServiceRole";
+type SecretName =
+  | ProviderName
+  | "googleClientId"
+  | "googleClientSecret"
+  | "youtubeOAuthState"
+  | "youtubeRefreshToken"
+  | "databaseUrl"
+  | "workerSecret"
+  | "supabaseServiceRole";
 
 type SecretStore = Partial<Record<SecretName, EncryptedValue>>;
 
@@ -11,6 +19,9 @@ const envSecretNames: Record<SecretName, string[]> = {
   openai: ["OPENAI_API_KEY"],
   elevenlabs: ["ELEVENLABS_API_KEY"],
   youtube: [],
+  googleClientId: ["GOOGLE_CLIENT_ID"],
+  googleClientSecret: ["GOOGLE_CLIENT_SECRET"],
+  youtubeOAuthState: [],
   youtubeRefreshToken: ["YOUTUBE_REFRESH_TOKEN"],
   databaseUrl: ["DATABASE_URL"],
   workerSecret: ["WORKER_SECRET"],
@@ -48,6 +59,16 @@ export async function saveSecret(name: SecretName, value: string) {
 
   const store = await readSecretStore();
   store[name] = await encryptSecret(value.trim());
+  await writeSecretStore(store);
+}
+
+export async function deleteSecret(name: SecretName) {
+  if (process.env.VELVET_SECRET_PROVIDER === "env" || process.env.VELVET_SECRET_PROVIDER === "vault") {
+    return;
+  }
+
+  const store = await readSecretStore();
+  delete store[name];
   await writeSecretStore(store);
 }
 

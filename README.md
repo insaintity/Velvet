@@ -161,7 +161,7 @@ Important variables include:
 - `ELEVENLABS_API_KEY`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
-- `YOUTUBE_REDIRECT_URI` such as `http://localhost:3000/api/youtube/callback`
+- `YOUTUBE_REDIRECT_URI` such as `http://localhost:3000/api/youtube/callback` (optional; derived from the current app address when omitted)
 - `FFMPEG_PATH` optional path to `ffmpeg.exe` when FFmpeg is not on PATH
 - `SUPABASE_URL`
 - `SUPABASE_SECRET_KEY` or the legacy `SUPABASE_SERVICE_ROLE_KEY` for server-only private media storage

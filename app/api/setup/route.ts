@@ -11,6 +11,7 @@ export async function GET() {
       openai: await hasSecret("openai"),
       elevenlabs: await hasSecret("elevenlabs"),
       youtube: await hasSecret("youtubeRefreshToken"),
+      youtubeOAuth: await hasSecret("googleClientId") && await hasSecret("googleClientSecret"),
       database: await hasSecret("databaseUrl"),
       storage: await hasSecret("supabaseServiceRole")
     }
@@ -25,6 +26,8 @@ export async function POST(request: Request) {
 
   await saveSecret("openai", body.openaiApiKey ?? "");
   await saveSecret("elevenlabs", body.elevenLabsApiKey ?? "");
+  await saveSecret("googleClientId", body.googleClientId ?? "");
+  await saveSecret("googleClientSecret", body.googleClientSecret ?? "");
   await saveSecret("databaseUrl", body.databaseUrl ?? "");
   await saveSecret("workerSecret", body.workerSecret ?? "");
   await saveSecret("supabaseServiceRole", body.supabaseServiceRoleKey ?? "");

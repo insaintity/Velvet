@@ -1,13 +1,21 @@
+import { readSecret } from "../secrets";
+
 const youtubeUploadUrl = "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status";
 
-export async function exchangeYouTubeCode(code: string) {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.YOUTUBE_REDIRECT_URI;
+export async function getYouTubeOAuthConfig(fallbackRedirectUri?: string) {
+  const clientId = process.env.GOOGLE_CLIENT_ID || (await readSecret("googleClientId"));
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET || (await readSecret("googleClientSecret"));
+  const redirectUri = process.env.YOUTUBE_REDIRECT_URI || fallbackRedirectUri;
 
   if (!clientId || !clientSecret || !redirectUri) {
     throw new Error("YouTube OAuth is not configured.");
   }
+
+  return { clientId, clientSecret, redirectUri };
+}
+
+export async function exchangeYouTubeCode(code: string, fallbackRedirectUri?: string) {
+  const { clientId, clientSecret, redirectUri } = await getYouTubeOAuthConfig(fallbackRedirectUri);
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -29,12 +37,10 @@ export async function exchangeYouTubeCode(code: string) {
 }
 
 export async function refreshYouTubeAccessToken(refreshToken: string) {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = process.env.GOOGLE_CLIENT_ID || (await readSecret("googleClientId"));
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET || (await readSecret("googleClientSecret"));
 
-  if (!clientId || !clientSecret) {
-    throw new Error("YouTube OAuth is not configured.");
-  }
+  if (!clientId || !clientSecret) throw new Error("YouTube OAuth is not configured.");
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",

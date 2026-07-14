@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { updateSetup } from "@/lib/server/db";
 import { exchangeYouTubeCode, fetchYouTubeChannel } from "@/lib/server/providers/youtube";
-import { saveSecret } from "@/lib/server/secrets";
+import { deleteSecret, readSecret, saveSecret } from "@/lib/server/secrets";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -10,9 +10,10 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const cookieStore = await cookies();
-  const expectedState = cookieStore.get("youtube_oauth_state")?.value;
+  const expectedState = cookieStore.get("youtube_oauth_state")?.value || (await readSecret("youtubeOAuthState"));
 
   cookieStore.delete("youtube_oauth_state");
+  await deleteSecret("youtubeOAuthState");
 
   if (error) {
     return NextResponse.redirect(new URL(`/settings?youtube=denied&reason=${encodeURIComponent(error)}`, request.url));
@@ -22,12 +23,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/settings?youtube=invalid_state", request.url));
   }
 
-  if (!process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_CLIENT_ID || !process.env.YOUTUBE_REDIRECT_URI) {
-    return NextResponse.redirect(new URL("/settings?youtube=missing_server_config", request.url));
-  }
-
   try {
-    const token = await exchangeYouTubeCode(code);
+    const redirectUri = new URL("/api/youtube/callback", request.url).toString();
+    const token = await exchangeYouTubeCode(code, redirectUri);
     if (token.refresh_token) {
       await saveSecret("youtubeRefreshToken", token.refresh_token);
     }
