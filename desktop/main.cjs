@@ -47,6 +47,7 @@ async function startDesktopApp() {
     HOSTNAME: "127.0.0.1",
     NODE_ENV: "production",
     PORT: String(port),
+    VELVET_DATA_DIR: path.join(userData, ".velvet"),
     VELVET_DESKTOP: "1"
   };
 

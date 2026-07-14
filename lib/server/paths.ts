@@ -1,7 +1,9 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
-export const velvetDir = path.join(process.cwd(), ".velvet");
+export const velvetDir = process.env.VELVET_DATA_DIR?.trim()
+  ? path.resolve(process.env.VELVET_DATA_DIR.trim())
+  : path.join(process.cwd(), ".velvet");
 export const databasePath = path.join(velvetDir, "db.json");
 export const secretsPath = path.join(velvetDir, "secrets.json");
 export const masterKeyPath = path.join(velvetDir, "master.key");

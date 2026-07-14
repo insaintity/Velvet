@@ -6,6 +6,7 @@ export function authIsConfigured() {
 }
 
 export function authIsRequired() {
+  if (process.env.VELVET_DESKTOP === "1") return false;
   return process.env.NODE_ENV === "production" || authIsConfigured();
 }
 
