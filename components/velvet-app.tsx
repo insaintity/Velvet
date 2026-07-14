@@ -417,7 +417,7 @@ function DashboardWorkspace({ setup }: { setup: SetupOverview }) {
 }
 
 function ProjectsWorkspace() {
-  const [projects, setProjects] = useState<ClientProject[]>([]);
+  const [projects, setProjects] = useState<ClientProject[] | null>(null);
 
   useEffect(() => {
     fetch("/api/projects")
@@ -425,6 +425,32 @@ function ProjectsWorkspace() {
       .then((data) => setProjects(data.projects ?? []))
       .catch(() => setProjects([]));
   }, []);
+
+  if (projects === null) {
+    return (
+      <div className="min-h-0 flex-1 overflow-hidden p-5" aria-label="Loading projects">
+        <section className="panel h-full rounded-xl p-5">
+          <div className="flex items-center justify-between">
+            <SectionTitle label="Projects" />
+            <div className="studio-skeleton h-10 w-28 rounded-lg" />
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-3">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="grid grid-cols-[92px_minmax(0,1fr)] gap-3 rounded-lg bg-white/[0.02] p-3 ring-1 ring-inset ring-[var(--border)]">
+                <div className="studio-skeleton aspect-square rounded-lg" />
+                <div className="min-w-0 py-1">
+                  <div className="studio-skeleton h-3 w-20 rounded" />
+                  <div className="studio-skeleton mt-4 h-4 w-3/4 rounded" />
+                  <div className="studio-skeleton mt-3 h-3 w-full rounded" />
+                  <div className="studio-skeleton mt-2 h-3 w-2/3 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   if (projects.length > 0) {
     return (

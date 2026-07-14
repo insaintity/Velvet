@@ -142,6 +142,21 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByText("YouTube metadata prompt")).toBeVisible();
   });
 
+  test("shows a project-shaped loader instead of flashing the empty library", async ({ page }) => {
+    await page.route("**/api/projects", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ projects: [{ id: fixtureProjectId, title: "Midnight Velvet", brief: "A late-night jazz release.", mediaType: "album", status: "blueprint", createdAt: "2026-07-13T00:00:00.000Z" }] })
+      });
+    });
+
+    await page.goto("/projects");
+    await expect(page.getByLabel("Loading projects")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "No projects yet" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Midnight Velvet" })).toBeVisible();
+  });
+
   test("renders project review and workflow controls", async ({ page }) => {
     await writeFixtureDatabase();
     await page.goto(`/projects/${fixtureProjectId}`);
