@@ -81,7 +81,7 @@ export function VelvetApp() {
     <main className={`relative z-10 h-screen min-w-0 overflow-hidden p-3 text-[15px] lg:p-5 ${compactDensity ? "compact-density" : ""}`}>
       <div className={`grid h-[calc(100vh-24px)] grid-cols-[64px_minmax(0,1fr)] gap-3 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-5 ${activeTrack ? "lg:h-[calc(100vh-136px)]" : "lg:h-[calc(100vh-40px)]"}`}>
         <Sidebar pathname={pathname} setup={setupOverview} />
-        <section className="panel flex min-h-0 flex-col overflow-hidden rounded-2xl lg:rounded-[22px]">
+        <section className="panel studio-shell flex min-h-0 flex-col overflow-hidden rounded-2xl lg:rounded-[22px]">
           <TopBar pageTitle={pageTitle} setup={setupOverview} onOpenCommand={() => setCommandOpen(true)} compactDensity={compactDensity} onToggleDensity={toggleDensity} />
           <motion.div key={pathname} className="flex min-h-0 flex-1" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}>
             {pathname === "/projects/new" ? <NewProjectFlow /> : <FreshWorkspace pathname={pathname} setup={setupOverview} />}
@@ -232,7 +232,7 @@ type ClientUpload = {
 
 function Sidebar({ pathname, setup }: { pathname: string; setup: SetupOverview }) {
   return (
-    <aside className="panel flex min-h-0 flex-col rounded-2xl px-2 py-4 lg:rounded-[22px] lg:px-4 lg:py-5">
+    <aside className="panel studio-sidebar flex min-h-0 flex-col rounded-2xl px-2 py-4 lg:rounded-[22px] lg:px-4 lg:py-5">
       <div className="lg:px-2">
         <Link href="/dashboard" className="flex items-center justify-center gap-3 lg:justify-start" aria-label="Velvet AI music foundry">
           <span className="brand-mark grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-[rgba(239,99,152,0.2)] bg-white/[0.035]">
@@ -258,10 +258,11 @@ function Sidebar({ pathname, setup }: { pathname: string; setup: SetupOverview }
               key={item.href}
               href={item.href}
               title={item.label}
+              aria-current={isActive ? "page" : undefined}
               className={`flex h-11 items-center justify-center gap-3 rounded-lg border px-0 text-sm transition lg:justify-start lg:px-4 ${
                 isActive
-                  ? "border-[var(--border-active)] bg-[rgba(239,99,152,0.13)] text-white shadow-[inset_0_0_18px_rgba(239,99,152,0.12)]"
-                  : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-hover)] hover:bg-white/[0.035] hover:text-white"
+                  ? "border-white/[.22] bg-white/[.105] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_10px_24px_rgba(12,8,20,.12)]"
+                  : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-hover)] hover:bg-white/[0.055] hover:text-white"
               }`}
             >
               <Icon className={`h-[18px] w-[18px] ${isActive ? "text-[var(--rose-soft)]" : "text-[#a9a3bd]"}`} />
@@ -318,7 +319,7 @@ function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensi
   }
 
   return (
-    <header className="flex h-[58px] shrink-0 items-center justify-between border-b border-[var(--border)] bg-black/10 px-3 lg:h-[62px] lg:px-6">
+    <header className="studio-topbar flex h-[58px] shrink-0 items-center justify-between border-b border-[var(--border)] px-3 lg:h-[62px] lg:px-6">
       <div className="flex items-center gap-3 text-sm text-[var(--text-muted)]">
         <Link href="/dashboard" className="hidden hover:text-white sm:block">
           Studio
@@ -327,15 +328,15 @@ function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensi
         <span className="text-[var(--text-primary)]">{pageTitle}</span>
       </div>
       <div className="flex items-center gap-3">
-        <button onClick={onToggleDensity} title={compactDensity ? "Use comfortable density" : "Use compact density"} aria-label={compactDensity ? "Use comfortable density" : "Use compact density"} aria-pressed={compactDensity} className={`grid h-9 w-9 place-items-center rounded-lg border border-[var(--border)] bg-white/[0.035] hover:border-[var(--border-hover)] hover:text-white ${compactDensity ? "text-[var(--rose-soft)]" : "text-[var(--text-muted)]"}`}><SlidersHorizontal className="h-4 w-4" /></button>
-        <button onClick={onOpenCommand} title="Open command palette" aria-label="Open command palette" className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--border)] bg-white/[0.035] text-[var(--text-muted)] hover:border-[var(--border-hover)] hover:text-white">
+        <button onClick={onToggleDensity} title={compactDensity ? "Use comfortable density" : "Use compact density"} aria-label={compactDensity ? "Use comfortable density" : "Use compact density"} aria-pressed={compactDensity} className={`glass-control grid h-9 w-9 place-items-center rounded-lg ${compactDensity ? "text-[var(--rose-soft)]" : "text-[var(--text-muted)]"}`}><SlidersHorizontal className="h-4 w-4" /></button>
+        <button onClick={onOpenCommand} title="Open command palette" aria-label="Open command palette" className="glass-control grid h-9 w-9 place-items-center rounded-lg text-[var(--text-muted)] hover:text-white">
           <Search className="h-4 w-4" />
         </button>
-        {privateAccessEnabled ? <button onClick={signOut} title="Sign out of private studio" aria-label="Sign out of private studio" className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--border)] bg-white/[0.035] text-[var(--text-muted)] hover:border-[var(--border-hover)] hover:text-white">
+        {privateAccessEnabled ? <button onClick={signOut} title="Sign out of private studio" aria-label="Sign out of private studio" className="glass-control grid h-9 w-9 place-items-center rounded-lg text-[var(--text-muted)] hover:text-white">
           <LogOut className="h-4 w-4" />
         </button> : null}
         {setup.isComplete ? (
-          <Link href="/settings" className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-white/[0.04] px-3 text-sm text-[var(--text-secondary)] transition hover:border-[var(--border-hover)] hover:text-white">
+          <Link href="/settings" className="glass-control flex h-9 items-center gap-2 rounded-lg px-3 text-sm text-[var(--text-secondary)] transition hover:text-white">
             <KeyRound className="h-4 w-4" />
             <span className="hidden sm:inline">Setup</span>
           </Link>
@@ -345,8 +346,8 @@ function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensi
           title={setup.isComplete ? "Create a song or album." : "Complete setup before creating media."}
           className={`flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition ${
             setup.isComplete
-              ? "bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] text-white"
-              : "border border-[var(--border)] bg-white/[0.025] text-[var(--text-muted)]"
+              ? "glass-primary text-white"
+              : "glass-control text-[var(--text-muted)]"
           }`}
         >
           {setup.isComplete ? <Plus className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
@@ -1517,15 +1518,15 @@ function NewProjectFlow() {
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-hidden p-3 lg:p-5">
-      <div className="mx-auto grid max-w-[1120px] grid-cols-1 gap-4 xl:grid-cols-[1fr_340px] xl:gap-5">
-        <section className="panel rounded-xl p-5">
+    <div className="flex min-h-0 flex-1 items-center overflow-hidden p-3 lg:p-5">
+      <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 gap-4 xl:grid-cols-[1fr_340px] xl:gap-5">
+        <section className="panel glass-panel-strong rounded-xl p-6">
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--rose-soft)]">New media</div>
-          <h1 className="mt-2 font-serif text-[48px] leading-none">Describe the song or album.</h1>
+          <h1 className="mt-2 text-[38px] font-semibold leading-[1.08] text-white">Describe the song or album.</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
             Choose the release type, then write the prompt. Mood, instrumentation, length and intended YouTube style are enough to begin.
           </p>
-          <div className="mt-5 grid h-12 grid-cols-2 rounded-xl border border-[var(--border)] bg-black/20 p-1">
+          <div className="glass-control mt-5 grid h-12 grid-cols-2 rounded-xl p-1">
             {(["song", "album"] as const).map((type) => (
               <button
                 key={type}
@@ -1533,7 +1534,7 @@ function NewProjectFlow() {
                 onClick={() => setMediaType(type)}
                 className={`rounded-lg text-sm font-medium capitalize transition ${
                   mediaType === type
-                    ? "bg-[rgba(239,99,152,0.18)] text-white shadow-[inset_0_0_18px_rgba(239,99,152,0.12)]"
+                    ? "border border-white/[.15] bg-white/[.12] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.08)]"
                     : "text-[var(--text-secondary)] hover:bg-white/[0.04] hover:text-white"
                 }`}
                 aria-pressed={mediaType === type}
@@ -1545,7 +1546,7 @@ function NewProjectFlow() {
           <textarea
             value={brief}
             onChange={(event) => setBrief(event.target.value)}
-            className="mt-4 min-h-[204px] w-full resize-none rounded-xl border border-[var(--border)] bg-black/20 p-4 text-sm leading-6 text-white outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-active)]"
+            className="glass-control mt-4 min-h-[204px] w-full resize-none rounded-xl p-4 text-sm leading-6 text-white outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-active)]"
             placeholder={
               mediaType === "song"
                 ? "Example: A smoky late-night jazz single with slow saxophone, intimate piano, brushed drums, and a cinematic noir mood. Around four minutes."
@@ -1558,7 +1559,7 @@ function NewProjectFlow() {
             <button
               onClick={createBlueprint}
               disabled={isCreating}
-              className="flex h-12 shrink-0 items-center gap-2 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 font-medium disabled:cursor-not-allowed disabled:opacity-50"
+              className="glass-primary flex h-12 shrink-0 items-center gap-2 rounded-lg px-5 font-medium disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isCreating ? "Creating..." : "Create Blueprint"}
               <ArrowRight className="h-4 w-4" />

@@ -40,7 +40,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-50 grid place-items-start bg-black/60 px-4 pt-[12vh] backdrop-blur-sm"
+          className="fixed inset-0 z-50 grid place-items-start bg-[rgba(19,14,28,.58)] px-4 pt-[12vh] backdrop-blur-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -52,7 +52,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             role="dialog"
             aria-modal="true"
             aria-label="Velvet commands"
-            className="panel w-full max-w-[560px] overflow-hidden rounded-xl"
+            className="panel glass-panel-strong w-full max-w-[560px] overflow-hidden rounded-xl"
             initial={{ opacity: 0, y: -10, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.99 }}

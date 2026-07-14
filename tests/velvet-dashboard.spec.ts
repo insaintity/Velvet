@@ -88,8 +88,8 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("button", { name: "Album" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Create Blueprint" })).toBeVisible();
     await expect(page.getByText("ChatGPT and ElevenLabs calls stay blocked until approved.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "New Media" })).toHaveClass(/border-\[var\(--border-active\)\]/);
-    await expect(page.getByRole("link", { name: "Projects" })).not.toHaveClass(/border-\[var\(--border-active\)\]/);
+    await expect(page.getByRole("link", { name: "New Media" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "Projects" })).not.toHaveAttribute("aria-current", "page");
   });
 
   test("shows focused onboarding for ChatGPT, ElevenLabs and YouTube", async ({ page }) => {
@@ -158,7 +158,7 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("button", { name: "Rendered release" })).toContainText("Midnight Velvet");
     await expect(page.getByLabel("Publish time")).toBeVisible();
     await expect(page.getByRole("button", { name: "Schedule upload" })).toBeEnabled();
-    await expect(page.getByRole("link", { name: "Scheduler" })).toHaveClass(/border-\[var\(--border-active\)\]/);
+    await expect(page.getByRole("link", { name: "Scheduler" })).toHaveAttribute("aria-current", "page");
   });
 
   test("reports prior YouTube upload outcomes", async ({ page }) => {
@@ -184,7 +184,7 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByText("80%")).toBeVisible();
     await expect(page.getByRole("link", { name: "Midnight Velvet" })).toBeVisible();
     await expect(page.getByText("YouTube quota unavailable.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Analytics" })).toHaveClass(/border-\[var\(--border-active\)\]/);
+    await expect(page.getByRole("link", { name: "Analytics" })).toHaveAttribute("aria-current", "page");
   });
 
   test("shows a project-shaped loader instead of flashing the empty library", async ({ page }) => {
