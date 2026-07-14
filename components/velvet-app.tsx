@@ -16,7 +16,6 @@ import {
   Pause,
   Play,
   Plus,
-  Settings2,
   ShieldCheck,
   Sparkles,
   UploadCloud,
@@ -193,13 +192,6 @@ function Sidebar({ pathname }: { pathname: string }) {
             </div>
           ))}
         </div>
-        <Link
-          href="/settings"
-          className="flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-[var(--text-secondary)] hover:bg-white/[0.04] hover:text-white"
-        >
-          <Settings2 className="h-[17px] w-[17px]" />
-          Settings
-        </Link>
         <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
           <div className="grid h-10 w-10 place-items-center rounded-full border border-[rgba(239,99,152,0.38)] bg-[rgba(239,99,152,0.1)]">
             <Circle className="h-4 w-4 text-[var(--rose-soft)]" />
