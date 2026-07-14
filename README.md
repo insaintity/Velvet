@@ -67,6 +67,8 @@ npm run worker:once
 
 For production worker deployment, see `docs/DEPLOYMENT.md` and `Dockerfile.worker`.
 
+Railway is the recommended low-cost production target. The repo includes `railway.json` for the web service; add a second Railway service from the same repo for `npm run worker`.
+
 ## Available Routes
 
 - `/dashboard` - first-launch studio overview
