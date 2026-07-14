@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowRight,
-  ChevronDown,
-  Circle,
   Database,
   FileText,
   HelpCircle,
@@ -12,7 +10,6 @@ import {
   KeyRound,
   Lock,
   Music2,
-  MoreHorizontal,
   Pause,
   Play,
   Plus,
@@ -23,6 +20,7 @@ import {
   Youtube
 } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { historyColumns, historyPromptTypes, navItems, safetyDefaults, setupSteps } from "@/lib/app-data";
@@ -32,26 +30,21 @@ import { usePlayerStore } from "@/store/player-store";
 export function VelvetApp() {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
+  const setupOverview = useSetupOverview();
 
   return (
-    <main className="relative z-10 h-screen min-w-[1120px] overflow-hidden p-5 text-[15px]">
-      <div className="grid h-[calc(100vh-104px)] grid-cols-[240px_1fr] gap-5">
-        <Sidebar pathname={pathname} />
-        <section className="panel flex min-h-0 flex-col overflow-hidden rounded-[22px]">
-          <TopBar pageTitle={pageTitle} />
-          {pathname === "/projects/new" ? <NewProjectFlow /> : <FreshWorkspace pathname={pathname} />}
+    <main className="relative z-10 h-screen min-w-0 overflow-hidden p-3 text-[15px] lg:p-5">
+      <div className="grid h-[calc(100vh-24px)] grid-cols-[64px_minmax(0,1fr)] gap-3 lg:h-[calc(100vh-136px)] lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-5">
+        <Sidebar pathname={pathname} setup={setupOverview} />
+        <section className="panel flex min-h-0 flex-col overflow-hidden rounded-2xl lg:rounded-[22px]">
+          <TopBar pageTitle={pageTitle} setup={setupOverview} />
+          {pathname === "/projects/new" ? <NewProjectFlow /> : <FreshWorkspace pathname={pathname} setup={setupOverview} />}
         </section>
       </div>
       <BottomPlayer />
     </main>
   );
 }
-
-const setupStatusItems = [
-  { label: "ChatGPT", state: "Not checked" },
-  { label: "ElevenLabs", state: "Not checked" },
-  { label: "YouTube", state: "Not connected" }
-];
 
 type SetupForm = {
   openaiApiKey: string;
@@ -78,6 +71,43 @@ type ClientStatus = {
   state?: string;
   message?: string;
 };
+
+type SetupOverview = {
+  readyCount: number;
+  isComplete: boolean;
+  services: Array<{ label: string; ready: boolean }>;
+};
+
+const emptySetupOverview: SetupOverview = {
+  readyCount: 0,
+  isComplete: false,
+  services: [
+    { label: "ChatGPT", ready: false },
+    { label: "ElevenLabs", ready: false },
+    { label: "YouTube", ready: false }
+  ]
+};
+
+function useSetupOverview() {
+  const [setup, setSetup] = useState<SetupOverview>(emptySetupOverview);
+
+  useEffect(() => {
+    fetch("/api/setup")
+      .then((response) => response.json())
+      .then((data) => {
+        const services = [
+          { label: "ChatGPT", ready: Boolean(data.secrets?.openai) },
+          { label: "ElevenLabs", ready: Boolean(data.secrets?.elevenlabs) },
+          { label: "YouTube", ready: Boolean(data.secrets?.youtube) }
+        ];
+        const readyCount = services.filter((service) => service.ready).length;
+        setSetup({ services, readyCount, isComplete: readyCount === services.length });
+      })
+      .catch(() => setSetup(emptySetupOverview));
+  }, []);
+
+  return setup;
+}
 
 type ClientProject = {
   id: string;
@@ -145,21 +175,26 @@ type ClientUpload = {
   prompts?: Array<{ kind: string; version: number }>;
 };
 
-function Sidebar({ pathname }: { pathname: string }) {
+function Sidebar({ pathname, setup }: { pathname: string; setup: SetupOverview }) {
   return (
-    <aside className="panel flex min-h-0 flex-col rounded-[22px] px-4 py-6">
-      <div className="px-3">
-        <Link href="/dashboard" className="block">
-          <div className="font-serif text-[42px] lowercase leading-none tracking-[0.03em] text-[#f7eef5]">
-            velvet
-          </div>
-          <div className="mt-2 text-[13px] font-medium tracking-[0.16em] text-[var(--rose-soft)]">
-            AI music foundry
-          </div>
+    <aside className="panel flex min-h-0 flex-col rounded-2xl px-2 py-4 lg:rounded-[22px] lg:px-4 lg:py-5">
+      <div className="lg:px-2">
+        <Link href="/dashboard" className="flex items-center justify-center gap-3 lg:justify-start" aria-label="Velvet AI music foundry">
+          <span className="brand-mark grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-[rgba(239,99,152,0.2)] bg-white/[0.035]">
+            <Image src="/brand/velvet-mark.png" alt="" width={34} height={34} priority className="h-[34px] w-[34px] object-contain" />
+          </span>
+          <span className="hidden min-w-0 lg:block">
+            <span className="block font-serif text-[32px] lowercase leading-none text-[#f7eef5]">
+              velvet
+            </span>
+            <span className="mt-1.5 block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--rose-soft)]">
+              AI music foundry
+            </span>
+          </span>
         </Link>
       </div>
 
-      <nav className="mt-8 flex-1 space-y-1">
+      <nav className="mt-7 flex-1 space-y-1">
         {navItems.map((item) => {
           const isActive = isActiveNavItem(pathname, item.href);
           const Icon = item.icon;
@@ -167,43 +202,41 @@ function Sidebar({ pathname }: { pathname: string }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex h-11 items-center gap-3 rounded-lg border px-4 text-sm transition ${
+              title={item.label}
+              className={`flex h-11 items-center justify-center gap-3 rounded-lg border px-0 text-sm transition lg:justify-start lg:px-4 ${
                 isActive
                   ? "border-[var(--border-active)] bg-[rgba(239,99,152,0.13)] text-white shadow-[inset_0_0_18px_rgba(239,99,152,0.12)]"
                   : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-hover)] hover:bg-white/[0.035] hover:text-white"
               }`}
             >
               <Icon className={`h-[18px] w-[18px] ${isActive ? "text-[var(--rose-soft)]" : "text-[#a9a3bd]"}`} />
-              <span>{item.label}</span>
+              <span className="hidden lg:inline">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="space-y-3">
-        <div className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
-          <div className="mb-3 text-[11px] font-semibold tracking-[0.18em] text-[var(--text-muted)]">SETUP</div>
-          {setupStatusItems.map((service) => (
-            <div key={service.label} className="mb-2 flex items-center justify-between gap-2 text-xs text-[var(--text-secondary)] last:mb-0">
-              <span className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--text-muted)]" />
-                {service.label}
-              </span>
-              <span className="rounded-full border border-[var(--border)] bg-black/10 px-2 py-0.5 text-[var(--text-muted)]">{service.state}</span>
-            </div>
+      <Link href="/settings" className="hidden rounded-lg border border-[var(--border)] bg-white/[0.025] p-3 transition hover:border-[var(--border-hover)] hover:bg-white/[0.04] lg:block">
+        <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+          <span>Studio readiness</span>
+          <span className="tabular text-[var(--text-secondary)]">{setup.readyCount}/3</span>
+        </div>
+        <div className="mt-3 h-1 overflow-hidden rounded-full bg-black/30">
+          <div
+            className="h-full rounded-full bg-[linear-gradient(90deg,var(--violet),var(--rose))] transition-[width] duration-500"
+            style={{ width: `${(setup.readyCount / 3) * 100}%` }}
+          />
+        </div>
+        <div className="mt-3 flex gap-1.5" aria-label={`${setup.readyCount} of 3 services connected`}>
+          {setup.services.map((service) => (
+            <span
+              key={service.label}
+              title={`${service.label}: ${service.ready ? "Connected" : "Not connected"}`}
+              className={`h-1.5 flex-1 rounded-full ${service.ready ? "bg-[var(--success)]" : "bg-white/10"}`}
+            />
           ))}
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
-          <div className="grid h-10 w-10 place-items-center rounded-full border border-[rgba(239,99,152,0.38)] bg-[rgba(239,99,152,0.1)]">
-            <Circle className="h-4 w-4 text-[var(--rose-soft)]" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium">New Studio</div>
-            <div className="text-xs text-[var(--text-muted)]">No media yet</div>
-          </div>
-          <ChevronDown className="h-4 w-4 text-[var(--text-secondary)]" />
-        </div>
-      </div>
+      </Link>
     </aside>
   );
 }
@@ -220,40 +253,43 @@ function isActiveNavItem(pathname: string, href: string) {
   return pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
 }
 
-function TopBar({ pageTitle }: { pageTitle: string }) {
+function TopBar({ pageTitle, setup }: { pageTitle: string; setup: SetupOverview }) {
   return (
-    <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-[var(--border)] bg-black/10 px-6">
+    <header className="flex h-[58px] shrink-0 items-center justify-between border-b border-[var(--border)] bg-black/10 px-3 lg:h-[62px] lg:px-6">
       <div className="flex items-center gap-3 text-sm text-[var(--text-muted)]">
-        <Link href="/dashboard" className="hover:text-white">
+        <Link href="/dashboard" className="hidden hover:text-white sm:block">
           Studio
         </Link>
-        <span>/</span>
+        <span className="hidden sm:block">/</span>
         <span className="text-[var(--text-primary)]">{pageTitle}</span>
       </div>
       <div className="flex items-center gap-3">
-        <Link href="/settings" className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-white/[0.05] px-4 text-sm">
-          <KeyRound className="h-4 w-4" />
-          Setup
-        </Link>
-        <button aria-label="More studio actions" className="grid h-9 w-10 place-items-center rounded-lg border border-[var(--border)] bg-white/[0.05]">
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
+        {setup.isComplete ? (
+          <Link href="/settings" className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-white/[0.04] px-3 text-sm text-[var(--text-secondary)] transition hover:border-[var(--border-hover)] hover:text-white">
+            <KeyRound className="h-4 w-4" />
+            <span className="hidden sm:inline">Setup</span>
+          </Link>
+        ) : null}
         <Link
-          href="/settings"
-          title="Complete setup before creating media."
-          className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-white/[0.04] px-4 text-sm text-[var(--text-muted)]"
+          href={setup.isComplete ? "/projects/new" : "/settings"}
+          title={setup.isComplete ? "Create a song or album." : "Complete setup before creating media."}
+          className={`flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition ${
+            setup.isComplete
+              ? "bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] text-white"
+              : "border border-[var(--border)] bg-white/[0.025] text-[var(--text-muted)]"
+          }`}
         >
-          <Lock className="h-4 w-4" />
-          Media Locked
+          {setup.isComplete ? <Plus className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+          <span className="hidden sm:inline">{setup.isComplete ? "New Media" : "Setup Required"}</span>
         </Link>
       </div>
     </header>
   );
 }
 
-function FreshWorkspace({ pathname }: { pathname: string }) {
+function FreshWorkspace({ pathname, setup }: { pathname: string; setup: SetupOverview }) {
   if (pathname.startsWith("/settings")) {
-    return <SettingsWorkspace />;
+    return <SettingsWorkspace setup={setup} />;
   }
 
   if (pathname.startsWith("/projects/") && pathname !== "/projects/new") {
@@ -268,42 +304,40 @@ function FreshWorkspace({ pathname }: { pathname: string }) {
     return <HistoryWorkspace />;
   }
 
-  return <DashboardWorkspace />;
+  return <DashboardWorkspace setup={setup} />;
 }
 
-function DashboardWorkspace() {
+function DashboardWorkspace({ setup }: { setup: SetupOverview }) {
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.05fr)_410px] gap-6 overflow-hidden p-5">
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-3 lg:p-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:gap-5">
       <section className="panel relative overflow-hidden rounded-xl p-6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_14%,rgba(74,110,232,0.2),transparent_32%),radial-gradient(circle_at_18%_86%,rgba(239,99,152,0.16),transparent_28%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_12%,rgba(74,110,232,0.16),transparent_34%),radial-gradient(circle_at_12%_90%,rgba(239,99,152,0.11),transparent_30%)]" />
         <div className="relative max-w-3xl">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[rgba(239,99,152,0.26)] bg-[rgba(239,99,152,0.08)] px-3 py-1 text-xs text-[var(--rose-soft)]">
             <Sparkles className="h-3.5 w-3.5" />
             First launch
           </div>
-          <h1 className="font-serif text-[64px] leading-[0.95] text-white">Create your first AI music release.</h1>
+          <h1 className="font-serif text-[42px] leading-none text-white lg:text-[52px]">Create your first AI music release.</h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--text-secondary)]">
             Start with a short song or album prompt. Velvet will prepare a blueprint for review before any generation, rendering or upload work begins.
           </p>
           <div className="mt-7 flex gap-3">
             <Link
-              href="/settings"
-              className="flex h-12 items-center gap-2 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 font-medium"
+              href={setup.isComplete ? "/projects/new" : "/settings"}
+              className="flex h-11 items-center gap-2 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 font-medium"
             >
-              Start Setup
+              {setup.isComplete ? "Create New Media" : "Start Setup"}
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href="/settings"
-              title="Complete setup before creating media."
-              className="flex h-12 items-center gap-2 rounded-lg border border-[var(--border)] bg-white/[0.03] px-5 text-[var(--text-muted)]"
-            >
-              <Lock className="h-4 w-4" />
-              Create Media After Setup
-            </Link>
+            {!setup.isComplete ? (
+              <div className="flex h-11 items-center gap-2 px-2 text-sm text-[var(--text-muted)]">
+                <Lock className="h-4 w-4" />
+                {setup.readyCount} of 3 services ready
+              </div>
+            ) : null}
           </div>
         </div>
-        <div className="relative mt-10 grid grid-cols-3 gap-3">
+        <div className="relative mt-6 grid grid-cols-3 gap-3">
           {setupSteps.map((step, index) => (
             <Link key={step.title} href={step.href} className="rounded-xl border border-[var(--border)] bg-black/20 p-4 hover:border-[var(--border-hover)]">
               <div className="tabular text-xs text-[var(--rose-soft)]">0{index + 1}</div>
@@ -314,7 +348,7 @@ function DashboardWorkspace() {
         </div>
       </section>
 
-      <aside className="grid min-h-0 content-start gap-7 py-1">
+      <aside className="hidden min-h-0 content-start gap-5 py-1 xl:grid">
         <EmptyPanel className="min-h-[132px]" title="Setup Required" body="Connect ChatGPT, ElevenLabs, and YouTube before creating the first release." action="Start setup" href="/settings" />
         <EmptyPanel className="min-h-[116px]" title="Generation Queue" body="Tracks appear here after a blueprint is approved." />
         <EmptyPanel className="min-h-[132px]" title="Publishing" body="Connect a channel before YouTube publishing." href="/settings/youtube" action="Connect YouTube" />
@@ -344,7 +378,7 @@ function ProjectsWorkspace() {
               New Media
             </Link>
           </div>
-          <div className="mt-5 grid grid-cols-3 gap-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-3">
             {projects.slice(0, 6).map((project) => (
               <Link key={project.id} href={`/projects/${project.id}`} className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-4 hover:border-[var(--border-hover)]">
                 <div className="text-xs uppercase tracking-[0.14em] text-[var(--rose-soft)]">{project.mediaType ?? "album"} / {project.status}</div>
@@ -481,7 +515,7 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
   }
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_340px] gap-5 overflow-hidden p-5">
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-3 lg:p-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-5">
       <section className="panel min-h-0 overflow-hidden rounded-xl p-5">
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
@@ -541,7 +575,7 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
         </div>
       </section>
 
-      <aside className="space-y-3 overflow-hidden">
+      <aside className="hidden space-y-3 overflow-hidden xl:block">
         <aside className="panel rounded-xl p-4">
           <SectionTitle label="Job Queue" />
           <div className="mt-3 space-y-2">
@@ -695,8 +729,8 @@ function HistoryWorkspace() {
   }, []);
 
   return (
-    <div className="min-h-0 flex-1 overflow-hidden p-5">
-      <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-5">
+    <div className="min-h-0 flex-1 overflow-hidden p-3 lg:p-5">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-5">
         <section className="panel rounded-xl p-5">
           <SectionTitle label="Upload History" />
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
@@ -744,7 +778,7 @@ function HistoryWorkspace() {
           </div>
         </section>
 
-        <aside className="space-y-4">
+        <aside className="hidden space-y-4 xl:block">
           <aside className="panel rounded-xl p-5">
             <SectionTitle label="Prompt Archive" />
             <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
@@ -775,7 +809,7 @@ function HistoryWorkspace() {
   );
 }
 
-function SettingsWorkspace() {
+function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
   const [youtubeStatus, setYoutubeStatus] = useState<string | null>(null);
   const [activeSetupStep, setActiveSetupStep] = useState<"services" | "youtube" | "review">("services");
   const [savedNotice, setSavedNotice] = useState(false);
@@ -801,6 +835,10 @@ function SettingsWorkspace() {
     ffmpegPerRenderMinute: "",
     youtubeUploadPerVideo: ""
   });
+  const settingsServices = setup.services.map((service) => ({
+    ...service,
+    status: providerStatus[service.label === "ChatGPT" ? "openai" : service.label === "ElevenLabs" ? "elevenlabs" : "youtube"]
+  }));
 
   useEffect(() => {
     setYoutubeStatus(new URLSearchParams(window.location.search).get("youtube"));
@@ -892,20 +930,23 @@ function SettingsWorkspace() {
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-hidden p-4">
-      <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-5">
-        <section className="panel rounded-xl p-4">
+    <div className="min-h-0 flex-1 overflow-hidden p-3 lg:p-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-5">
+        <section className="panel settings-primary rounded-xl p-4">
           <SectionTitle label="Onboarding" />
-          <p className="mt-2 max-w-3xl text-xs leading-5 text-[var(--text-secondary)]">
+          <p className="settings-intro mt-2 max-w-3xl text-xs leading-5 text-[var(--text-secondary)]">
             Connect only what Velvet needs to create and publish: ChatGPT for planning, ElevenLabs for music, and YouTube for private review uploads. Model and format defaults are handled automatically.
           </p>
 
-          <div className="mt-3 grid grid-cols-[120px_1fr] gap-3">
+          <div className="settings-progress mt-3 grid grid-cols-[120px_1fr] gap-3">
             <div className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
               <div className="text-xs text-[var(--text-muted)]">Setup progress</div>
-              <div className="mt-2 font-serif text-[34px] leading-none">0 / 3</div>
+              <div className="mt-2 font-serif text-[34px] leading-none">{setup.readyCount} / 3</div>
               <div className="mt-2 h-1.5 rounded-full bg-black/25">
-                <div className="h-full w-0 rounded-full bg-[linear-gradient(90deg,var(--blue),var(--rose))]" />
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--rose))] transition-[width] duration-500"
+                  style={{ width: `${(setup.readyCount / 3) * 100}%` }}
+                />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -931,12 +972,12 @@ function SettingsWorkspace() {
 
           <div className="mt-3">
             {activeSetupStep === "services" ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <SetupCard
                   icon={<KeyRound className="h-5 w-5" />}
                   title="ChatGPT / OpenAI"
                   body="Used for song and album blueprints, prompt revisions, artwork prompts, image generation and YouTube metadata."
-                  status="Not checked"
+                  status={formatProviderStatus(providerStatus.openai, setup.services[0]?.ready)}
                 >
                   <Field
                     label="OpenAI API key"
@@ -951,7 +992,7 @@ function SettingsWorkspace() {
                       Test ChatGPT key
                     </button>
                   </div>
-                  <p className="text-xs leading-5 text-[var(--text-muted)]">Velvet chooses the planning and image models automatically.</p>
+                  <p className="setup-card-note text-xs leading-5 text-[var(--text-muted)]">Velvet chooses the planning and image models automatically.</p>
                   <StatusLine status={providerStatus.openai} />
                 </SetupCard>
 
@@ -959,7 +1000,7 @@ function SettingsWorkspace() {
                   icon={<Music2 className="h-5 w-5" />}
                   title="ElevenLabs"
                   body="Used only when approved track prompts are ready for music generation."
-                  status="Not checked"
+                  status={formatProviderStatus(providerStatus.elevenlabs, setup.services[1]?.ready)}
                 >
                   <Field
                     label="ElevenLabs API key"
@@ -974,7 +1015,7 @@ function SettingsWorkspace() {
                       Check key & usage
                     </button>
                   </div>
-                  <p className="text-xs leading-5 text-[var(--text-muted)]">Velvet uses the default ElevenLabs music model and reads quota usage from the key.</p>
+                  <p className="setup-card-note text-xs leading-5 text-[var(--text-muted)]">Velvet uses the default ElevenLabs music model and reads quota usage from the key.</p>
                   <StatusLine status={providerStatus.elevenlabs} />
                 </SetupCard>
               </div>
@@ -986,7 +1027,7 @@ function SettingsWorkspace() {
                   icon={<Youtube className="h-5 w-5" />}
                   title="YouTube"
                   body="Connect with Google OAuth. Velvet will request permission to upload videos and read channel identity."
-                  status="Not connected"
+                  status={formatProviderStatus(providerStatus.youtube, setup.services[2]?.ready)}
                 >
                   <Link
                     href="/api/youtube/login"
@@ -1066,13 +1107,13 @@ function SettingsWorkspace() {
 
           {youtubeStatus ? <YouTubeStatusNotice status={youtubeStatus} /> : null}
 
-          <div className="mt-3 flex items-center justify-between gap-4 rounded-xl border border-[rgba(239,99,152,0.22)] bg-[rgba(239,99,152,0.06)] p-3">
+          <div className="settings-security mt-3 flex items-center justify-between gap-4 rounded-xl border border-[rgba(239,99,152,0.22)] bg-[rgba(239,99,152,0.06)] p-3">
             <div>
             <div className="flex items-center gap-2 text-sm font-medium">
               <KeyRound className="h-4 w-4 text-[var(--rose-soft)]" />
               Server-side only
             </div>
-            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+            <p className="settings-security-copy mt-1 text-xs leading-5 text-[var(--text-secondary)]">
               Real keys and OAuth tokens are encrypted for local use, or read from production environment-backed secret storage when configured.
             </p>
             </div>
@@ -1090,26 +1131,21 @@ function SettingsWorkspace() {
             </div>
           ) : null}
 
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            {["Prompt/version history", "Error log", "Job queue"].map((item) => (
-              <div key={item} className="rounded-lg border border-[var(--border)] bg-black/15 p-2 text-xs text-[var(--text-muted)]">
-                {item}
-              </div>
-            ))}
-          </div>
         </section>
-        <aside className="space-y-4">
+          <aside className="hidden space-y-4 xl:block">
           <aside className="panel rounded-xl p-5">
-            <SectionTitle label="Required Services" />
+            <SectionTitle label="Readiness" />
             <div className="mt-4 space-y-3">
-              {setupStatusItems.map((item) => (
+              {settingsServices.map((item) => (
                 <div key={item.label} className="rounded-lg border border-[var(--border)] bg-white/[0.035] p-3">
                   <div className="flex items-center justify-between gap-3 text-sm font-medium">
                     <span className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-[var(--text-muted)]" />
+                      <span className={`h-2 w-2 rounded-full ${item.ready || item.status?.state === "valid" || item.status?.state === "connected" ? "bg-[var(--success)]" : "bg-[var(--text-muted)]"}`} />
                       {item.label === "ChatGPT" ? "ChatGPT / OpenAI" : item.label}
                     </span>
-                    <span className="rounded-full border border-[var(--border)] bg-black/10 px-2 py-0.5 text-[11px] text-[var(--text-muted)]">{item.state}</span>
+                    <span className="rounded-full border border-[var(--border)] bg-black/10 px-2 py-0.5 text-[11px] text-[var(--text-muted)]">
+                      {formatProviderStatus(item.status, item.ready)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -1185,8 +1221,8 @@ function NewProjectFlow() {
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-hidden p-5">
-      <div className="mx-auto grid max-w-[1120px] grid-cols-[1fr_340px] gap-5">
+    <div className="min-h-0 flex-1 overflow-hidden p-3 lg:p-5">
+      <div className="mx-auto grid max-w-[1120px] grid-cols-1 gap-4 xl:grid-cols-[1fr_340px] xl:gap-5">
         <section className="panel rounded-xl p-5">
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--rose-soft)]">New media</div>
           <h1 className="mt-2 font-serif text-[48px] leading-none">Describe the song or album.</h1>
@@ -1233,7 +1269,7 @@ function NewProjectFlow() {
             </button>
           </div>
         </section>
-        <aside className="space-y-4">
+        <aside className="hidden space-y-4 xl:block">
           <EmptyPanel title="Release type" body="Songs create one-track blueprints. Albums create a multi-track plan with YouTube-ready metadata." />
           <EmptyPanel title="Optional" body="After the prompt, Velvet can ask for length, track count, vocals and workflow mode only if needed." />
           <EmptyPanel title="Before generation" body="You will review the blueprint first. ChatGPT and ElevenLabs calls stay blocked until approved." />
@@ -1274,14 +1310,14 @@ function SetupCard({
   status?: string;
 }) {
   return (
-    <article className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
+    <article className="setup-card rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
       <div className="flex items-start gap-3">
         <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[var(--border)] bg-black/15 text-[var(--rose-soft)] [&>svg]:h-4 [&>svg]:w-4">
           {icon}
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-medium">{title}</h3>
-          <p className="mt-1 text-xs leading-4 text-[var(--text-muted)]">{body}</p>
+          <p className="setup-card-body mt-1 text-xs leading-4 text-[var(--text-muted)]">{body}</p>
         </div>
         {status ? (
           <span className="shrink-0 rounded-full border border-[var(--border)] bg-black/15 px-2 py-0.5 text-[11px] text-[var(--text-muted)]">
@@ -1309,6 +1345,22 @@ function StatusLine({ status }: { status?: ClientStatus }) {
   }
 
   return <p className="text-xs leading-5 text-[var(--text-muted)]">{status.message}</p>;
+}
+
+function formatProviderStatus(status?: ClientStatus, hasSecret = false) {
+  if (status?.state === "valid" || status?.state === "connected") {
+    return "Ready";
+  }
+
+  if (hasSecret || status?.state === "unchecked") {
+    return "Saved";
+  }
+
+  if (status?.state === "invalid" || status?.state === "error") {
+    return "Needs attention";
+  }
+
+  return "Not connected";
 }
 
 function Field({
@@ -1350,7 +1402,7 @@ function Field({
 function BottomPlayer() {
   const { isPlaying, positionSeconds, volume, togglePlaying, setVolume } = usePlayerStore();
   return (
-    <footer className="panel mt-4 grid h-20 grid-cols-[310px_1fr_230px] items-center gap-6 rounded-xl px-5">
+    <footer className="panel mt-4 hidden h-20 grid-cols-[310px_1fr_230px] items-center gap-6 rounded-xl px-5 lg:grid">
       <div className="flex items-center gap-4">
         <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border border-[var(--border)] bg-white/[0.035]">
           <Play className="h-5 w-5 text-[var(--text-muted)]" />

@@ -59,7 +59,7 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("heading", { name: "Create your first AI music release." })).toBeVisible();
     await expect(page.getByText("Connect ChatGPT, ElevenLabs, and YouTube before creating the first release.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Start Setup" }).first()).toHaveAttribute("href", "/settings");
-    await expect(page.getByRole("link", { name: "Create Media After Setup" })).toHaveAttribute("href", "/settings");
+    await expect(page.getByRole("link", { name: "Setup Required" })).toHaveAttribute("href", "/settings");
     await expect(page.getByRole("button", { name: /Play|Pause/ })).toBeVisible();
 
     const screenshot = await page.screenshot({ fullPage: true });
