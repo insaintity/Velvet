@@ -1276,7 +1276,8 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
                   <div className="flex items-center gap-3"><Youtube className="h-5 w-5 text-[#ff4965]" /><div><h3 className="text-base font-medium">Connect YouTube</h3><p className="text-xs text-[var(--text-muted)]">Choose your Google account in the system browser. Velvet never sees your password.</p></div></div>
                   {completed[2] || youtubeLoginAvailable ? (
                     <div className="mt-4 rounded-lg border border-[var(--border)] bg-black/15 p-4 text-xs leading-5 text-[var(--text-secondary)]">
-                      {completed[2] ? "YouTube is already connected." : "Google will ask permission to identify your channel and upload videos. New uploads remain private by default."}
+                      <p>{completed[2] ? "YouTube is already connected." : "Google will ask permission to identify your channel and upload videos. New uploads remain private by default."}</p>
+                      {!completed[2] ? <GoogleTesterLink /> : null}
                     </div>
                   ) : (
                     <div className="mt-4">
@@ -1690,6 +1691,7 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
                       />
                     ) : null}
                   </p>
+                  {!setup.services[2]?.ready ? <GoogleTesterLink /> : null}
                 </SetupCard>
                 <div className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
                   <div className="text-sm font-medium">Channel preview</div>
@@ -1831,12 +1833,23 @@ function YouTubeStatusNotice({ status }: { status: string }) {
             ? "YouTube authorized, but Google could not finish the secure token exchange. Please try again."
         : status === "invalid_state"
           ? "YouTube login could not be verified. Please try again."
-          : "YouTube login was not completed.";
+          : status === "denied"
+            ? "Google denied access. If the OAuth app is in Testing, add this Google account under Google Auth Platform > Audience > Test users, then try again."
+            : "YouTube login was not completed.";
 
   return (
     <div className="mt-3 rounded-xl border border-[rgba(213,161,94,0.28)] bg-[rgba(213,161,94,0.07)] p-3 text-xs leading-5 text-[var(--text-secondary)]">
       {message}
     </div>
+  );
+}
+
+function GoogleTesterLink() {
+  return (
+    <a href="https://console.cloud.google.com/auth/audience" target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-[var(--rose-soft)] hover:text-white">
+      Error 403? Add this account as a Google test user
+      <ExternalLink className="h-3 w-3" />
+    </a>
   );
 }
 
