@@ -78,15 +78,15 @@ html.transparent-mode body {
 }
 
 html.transparent-mode body::before {
-  opacity: 0.1;
+  opacity: 0.08;
 }
 
 html.transparent-mode body::after {
-  background: rgba(8, 6, 14, 0.04);
+  background: rgba(8, 6, 14, 0.025);
 }
 
 html.transparent-mode .panel {
-  background: rgba(17, 14, 26, 0.34);
+  background: rgba(17, 14, 26, 0.28);
   backdrop-filter: none;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.055),
@@ -94,15 +94,15 @@ html.transparent-mode .panel {
 }
 
 html.transparent-mode .studio-shell {
-  background: rgba(14, 12, 22, 0.18);
+  background: rgba(14, 12, 22, 0.14);
 }
 
 html.transparent-mode .studio-sidebar {
-  background: rgba(14, 12, 22, 0.3);
+  background: rgba(14, 12, 22, 0.24);
 }
 
 html.transparent-mode .studio-topbar {
-  background: rgba(14, 12, 22, 0.24);
+  background: rgba(14, 12, 22, 0.18);
   backdrop-filter: none;
 }
 
@@ -170,7 +170,13 @@ select:focus-visible {
 }
 
 .studio-topbar {
+  -webkit-app-region: drag;
   background: rgba(49, 42, 66, 0.22);
+  user-select: none;
+}
+
+.studio-topbar :is(a, button, input, textarea, select, [role="menu"]) {
+  -webkit-app-region: no-drag;
 }
 
 .glass-control {
