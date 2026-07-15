@@ -100,7 +100,7 @@ export function VelvetApp() {
         <Sidebar pathname={pathname} setup={setupOverview} />
         <section className="panel studio-shell flex min-h-0 flex-col overflow-hidden rounded-2xl lg:rounded-[22px]">
           <TopBar pageTitle={pageTitle} setup={setupOverview} onOpenCommand={() => setCommandOpen(true)} compactDensity={compactDensity} onToggleDensity={toggleDensity} transparentMode={transparentMode} onToggleTransparency={toggleTransparency} />
-          <motion.div key={pathname} className="flex min-h-0 flex-1" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}>
+          <motion.div key={pathname} className="studio-content relative z-0 flex min-h-0 flex-1" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}>
             {pathname === "/projects/new" ? <NewProjectFlow /> : <FreshWorkspace pathname={pathname} setup={setupOverview} />}
           </motion.div>
         </section>
@@ -348,7 +348,7 @@ function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensi
   }
 
   return (
-    <header className="studio-topbar flex h-[58px] shrink-0 items-center justify-between border-b border-[var(--border)] px-3 lg:h-[62px] lg:px-6">
+    <header className="studio-topbar relative z-50 flex h-[58px] shrink-0 items-center justify-between overflow-visible border-b border-[var(--border)] px-3 lg:h-[62px] lg:px-6">
       <div className="flex items-center gap-3 text-sm text-[var(--text-muted)]">
         <Link href="/dashboard" className="hidden hover:text-white sm:block">
           Studio

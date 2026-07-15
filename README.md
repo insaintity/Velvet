@@ -89,7 +89,7 @@ npm run desktop:dist
 
 The executable is written to `release/`. Desktop projects and encrypted credentials are stored under the current Windows user's Velvet application-data directory, so replacing the executable does not remove studio data.
 
-Use **Display options > Wallpaper mode** to reveal the Windows desktop through Velvet's dark acrylic panels. The preference is stored locally and can be switched back to the solid studio background at any time.
+Use **Display options > Wallpaper mode** to reveal the Windows desktop through Velvet's translucent dark panels. The preference is stored locally and can be switched back to the solid studio background at any time.
 
 The portable build extracts its bundled runtime on launch, so the first start can take around 30-60 seconds. Later launches are normally faster while Windows retains the extracted files.
 

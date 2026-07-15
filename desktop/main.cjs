@@ -68,7 +68,6 @@ async function startDesktopApp() {
     minWidth: 1180,
     minHeight: 760,
     backgroundColor: "#00000000",
-    backgroundMaterial: "acrylic",
     transparent: true,
     autoHideMenuBar: true,
     show: false,
