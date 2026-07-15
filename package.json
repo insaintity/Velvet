@@ -21,8 +21,9 @@
     "desktop:prepare:fast": "node scripts/prepare-desktop.mjs --reuse-build",
     "desktop:preview": "npm run desktop:prepare && electron .",
     "desktop:preview:fast": "npm run desktop:prepare:fast && electron .",
-    "desktop:dist": "npm run desktop:prepare && electron-builder --win portable",
-    "desktop:dist:fast": "npm run desktop:prepare:fast && electron-builder --win portable"
+    "desktop:dist": "npm run desktop:prepare && electron-builder --win",
+    "desktop:dist:fast": "npm run desktop:prepare:fast && electron-builder --win",
+    "desktop:dist:portable": "npm run desktop:prepare:fast && electron-builder --win portable"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1087.0",
@@ -79,8 +80,16 @@
     "win": {
       "icon": "app/icon.png",
       "target": [
-        { "target": "portable", "arch": ["x64"] }
+        { "target": "nsis", "arch": ["x64"] }
       ]
+    },
+    "nsis": {
+      "artifactName": "Velvet-Setup-${version}-Windows-${arch}.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   }
 }

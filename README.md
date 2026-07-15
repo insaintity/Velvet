@@ -81,7 +81,7 @@ npm run worker:once
 
 ## Windows Desktop
 
-Build a self-contained portable Windows executable with the Velvet server, durable worker, and FFmpeg bundled inside:
+Build the recommended Windows installer with the Velvet server, durable worker, and FFmpeg bundled inside:
 
 ```bash
 npm run desktop:dist
@@ -95,11 +95,11 @@ npm run desktop:dist:fast
 
 Velvet also creates rolling encrypted local backups whenever studio data changes. Export or restore a backup and check provider, worker, FFmpeg, storage, and database health from **Settings > Studio Health**.
 
-The executable is written to `release/`. Desktop projects and encrypted credentials are stored under the current Windows user's Velvet application-data directory, so replacing the executable does not remove studio data.
+The installer is written to `release/`. Install it once, then launch Velvet from the desktop or Start menu without extracting the full runtime on every opening. Desktop projects and encrypted credentials remain under the current Windows user's Velvet application-data directory, so upgrades do not remove studio data.
 
 Use **Display options > Wallpaper mode** to reveal the Windows desktop through Velvet's translucent dark panels. The preference is stored locally and can be switched back to the solid studio background at any time.
 
-The portable build extracts its bundled runtime on launch, so the first start can take around 30-60 seconds. Later launches are normally faster while Windows retains the extracted files.
+For a USB-style single executable, `npm run desktop:dist:portable` remains available. Portable mode extracts its bundled runtime on every launch and is therefore significantly slower than the installed app.
 
 For production worker deployment, see `docs/DEPLOYMENT.md` and `Dockerfile.worker`.
 

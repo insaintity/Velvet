@@ -64,17 +64,28 @@ async function startDesktopApp() {
   };
 
   serverProcess = launchNode(path.join(serverRoot, "server.js"), userData, environment, log);
-  workerProcess = launchWorker(workerEntry, userData, environment, log);
-  await waitForServer(`http://127.0.0.1:${port}/api/health`, serverProcess);
 
   if (process.argv.includes("--smoke-test")) {
+    await waitForServer(`http://127.0.0.1:${port}/api/health`, serverProcess);
     await verifyFfmpeg(environment.FFMPEG_PATH);
     stopServices();
     app.quit();
     return;
   }
 
-  mainWindow = new BrowserWindow({
+  mainWindow = createMainWindow(resourcesRoot);
+  await mainWindow.loadURL(startupPage());
+  mainWindow.show();
+
+  await waitForServer(`http://127.0.0.1:${port}/api/health`, serverProcess);
+  const localOrigin = `http://127.0.0.1:${port}`;
+  configureNavigation(mainWindow, localOrigin);
+  await mainWindow.loadURL(`${localOrigin}/projects/new`);
+  workerProcess = launchWorker(workerEntry, userData, environment, log);
+}
+
+function createMainWindow(resourcesRoot) {
+  const window = new BrowserWindow({
     width: 1500,
     height: 960,
     minWidth: 1180,
@@ -92,20 +103,31 @@ async function startDesktopApp() {
       sandbox: true
     }
   });
+  window.on("closed", () => { mainWindow = undefined; });
+  return window;
+}
 
-  const localOrigin = `http://127.0.0.1:${port}`;
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+function configureNavigation(window, localOrigin) {
+  window.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith(`${localOrigin}/api/youtube/login`) || !url.startsWith(localOrigin)) shell.openExternal(url);
     return { action: "deny" };
   });
-  mainWindow.webContents.on("will-navigate", (event, url) => {
+  window.webContents.on("will-navigate", (event, url) => {
     if (url.startsWith(localOrigin)) return;
     event.preventDefault();
     shell.openExternal(url);
   });
-  mainWindow.once("ready-to-show", () => mainWindow.show());
-  mainWindow.on("closed", () => { mainWindow = undefined; });
-  await mainWindow.loadURL(`${localOrigin}/projects/new`);
+}
+
+function startupPage() {
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+    html,body{height:100%;margin:0;background:transparent;color:#f8f4fb;font-family:Segoe UI,sans-serif;-webkit-app-region:drag}
+    body{display:grid;place-items:center;background:rgba(16,13,25,.9);border:1px solid rgba(224,178,220,.2);box-sizing:border-box}
+    main{text-align:center}.mark{font:56px Georgia,serif}.name{font:44px Georgia,serif;margin-top:10px}.tag{margin-top:6px;color:#cbbbd0;font-size:11px;letter-spacing:.18em;text-transform:uppercase}
+    .line{width:180px;height:2px;margin:28px auto 0;overflow:hidden;background:rgba(255,255,255,.08)}.line:after{content:"";display:block;width:45%;height:100%;background:#e875ad;animation:load 1.1s ease-in-out infinite}
+    @keyframes load{from{transform:translateX(-110%)}to{transform:translateX(330%)}}@media(prefers-reduced-motion:reduce){.line:after{animation:none;width:100%}}
+  </style></head><body><main><div class="mark">V</div><div class="name">velvet</div><div class="tag">AI music foundry</div><div class="line"></div></main></body></html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 
 function launchNode(entry, cwd, env, log) {
