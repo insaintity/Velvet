@@ -3,6 +3,7 @@
 type CacheEntry = { value?: unknown; fetchedAt?: number; request?: Promise<unknown> };
 const cache = new Map<string, CacheEntry>();
 let eventsStarted = false;
+let studioEvents: EventSource | undefined;
 
 export function peekCachedJson<T>(key: string): T | undefined {
   return cache.get(key)?.value as T | undefined;
@@ -35,8 +36,28 @@ export function invalidateCachedJson(prefix?: string) {
 export function startStudioEvents() {
   if (eventsStarted || typeof window === "undefined") return;
   eventsStarted = true;
-  const events = new EventSource("/api/events");
-  events.addEventListener("studio-update", () => {
+  const connect = () => {
+    if (document.hidden || studioEvents) return;
+    const events = new EventSource("/api/events");
+    studioEvents = events;
+    events.addEventListener("studio-update", refreshStudioData);
+    events.onerror = () => {
+      // EventSource reconnects automatically using the server-provided retry interval.
+    };
+  };
+  const visibilityChanged = () => {
+    if (document.hidden) {
+      studioEvents?.close();
+      studioEvents = undefined;
+      return;
+    }
+    connect();
+  };
+  document.addEventListener("visibilitychange", visibilityChanged);
+  connect();
+}
+
+function refreshStudioData() {
     invalidateCachedJson("/api/projects");
     invalidateCachedJson("/api/jobs");
     invalidateCachedJson("/api/uploads");
@@ -44,8 +65,4 @@ export function startStudioEvents() {
     invalidateCachedJson("/api/publishing");
     invalidateCachedJson("/api/analytics");
     window.dispatchEvent(new Event("velvet:studio-update"));
-  });
-  events.onerror = () => {
-    // EventSource reconnects automatically using the server-provided retry interval.
-  };
 }

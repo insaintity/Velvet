@@ -23,9 +23,13 @@ export function PrivateStudioLogin() {
   }
 
   return (
-    <main className="relative grid min-h-screen place-items-center overflow-hidden p-5 text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(118deg,rgba(116,91,137,.14),transparent_36%,rgba(173,116,147,.09))]" />
-      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="panel glass-panel-strong relative w-full max-w-[420px] rounded-2xl p-7 shadow-[0_24px_90px_rgba(0,0,0,.3)]">
+    <main className="relative flex min-h-screen items-center overflow-hidden p-5 text-white">
+      <motion.div className="absolute inset-0" initial={{ scale: 1.025, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}>
+        <Image src="/brand/velvet-studio-hero.webp" alt="" fill priority sizes="100vw" className="object-cover object-center" />
+      </motion.div>
+      <div className="login-hero-shade pointer-events-none absolute inset-0" />
+      <div className="relative mx-auto flex w-full max-w-[1180px] justify-center lg:justify-end">
+      <motion.section initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.08, duration: 0.42, ease: [0.22, 1, 0.36, 1] }} className="panel glass-panel-strong relative w-full max-w-[420px] rounded-2xl p-7 shadow-[0_24px_90px_rgba(0,0,0,.38)] backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <span className="brand-mark grid h-12 w-12 place-items-center rounded-lg border border-[rgba(239,99,152,.2)] bg-white/[.035]"><Image src="/brand/velvet-mark.png" alt="" width={38} height={38} priority /></span>
           <span><span className="block font-serif text-[34px] lowercase leading-none">velvet</span><span className="mt-1.5 block text-[9px] font-semibold uppercase tracking-[.16em] text-[var(--rose-soft)]">Private AI music foundry</span></span>
@@ -39,6 +43,7 @@ export function PrivateStudioLogin() {
           <button disabled={busy || !password} className="glass-primary mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40">{busy ? "Unlocking" : "Enter studio"}<ArrowRight className="h-4 w-4" /></button>
         </form>
       </motion.section>
+      </div>
     </main>
   );
 }

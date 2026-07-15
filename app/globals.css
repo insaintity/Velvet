@@ -297,6 +297,18 @@ html.desktop-mode .window-controls {
     rgba(46, 39, 62, 0.5);
 }
 
+.new-media-hero-shade {
+  background:
+    linear-gradient(90deg, rgba(24, 19, 35, 0.98) 0%, rgba(24, 19, 35, 0.86) 48%, rgba(24, 19, 35, 0.28) 100%),
+    linear-gradient(0deg, rgba(31, 25, 43, 0.94) 0%, transparent 58%);
+}
+
+.login-hero-shade {
+  background:
+    linear-gradient(90deg, rgba(12, 10, 18, 0.28) 0%, rgba(12, 10, 18, 0.4) 48%, rgba(16, 12, 24, 0.82) 100%),
+    rgba(10, 8, 15, 0.28);
+}
+
 .prompt-producer-dialog {
   isolation: isolate;
   background:

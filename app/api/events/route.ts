@@ -5,13 +5,17 @@ export const dynamic = "force-dynamic";
 
 export function GET(request: Request) {
   const encoder = new TextEncoder();
-  let timer: ReturnType<typeof setInterval> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   let lastFingerprint = "";
+  let idleRuns = 0;
+  let closed = false;
 
   const stream = new ReadableStream({
     async start(controller) {
       controller.enqueue(encoder.encode("retry: 1000\nevent: ready\ndata: {}\n\n"));
       const publish = async () => {
+        if (closed) return;
+        let changed = false;
         try {
           const database = await readDatabase();
           const fingerprint = [
@@ -22,22 +26,28 @@ export function GET(request: Request) {
             database.jobs.length,
             database.uploads.length
           ].join(":");
-          if (fingerprint === lastFingerprint) return;
-          lastFingerprint = fingerprint;
-          controller.enqueue(encoder.encode(`event: studio-update\ndata: ${JSON.stringify({ fingerprint, at: Date.now() })}\n\n`));
+          if (fingerprint !== lastFingerprint) {
+            lastFingerprint = fingerprint;
+            changed = true;
+            controller.enqueue(encoder.encode(`event: studio-update\ndata: ${JSON.stringify({ fingerprint, at: Date.now() })}\n\n`));
+          }
         } catch {
           controller.enqueue(encoder.encode(": keep-alive\n\n"));
         }
+        idleRuns = changed ? 0 : idleRuns + 1;
+        const delay = changed ? 750 : Math.min(5_000, 750 * 2 ** Math.min(idleRuns, 3));
+        timer = setTimeout(publish, delay);
       };
-      await publish();
-      timer = setInterval(publish, 750);
+      void publish();
       request.signal.addEventListener("abort", () => {
-        if (timer) clearInterval(timer);
+        closed = true;
+        if (timer) clearTimeout(timer);
         controller.close();
       }, { once: true });
     },
     cancel() {
-      if (timer) clearInterval(timer);
+      closed = true;
+      if (timer) clearTimeout(timer);
     }
   });
 
