@@ -57,6 +57,7 @@ export function VelvetApp() {
   const activeTrack = usePlayerStore((state) => state.activeTrack);
   const [commandOpen, setCommandOpen] = useState(false);
   const [compactDensity, setCompactDensity] = useState(false);
+  const [transparentMode, setTransparentMode] = useState(false);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -71,10 +72,25 @@ export function VelvetApp() {
 
   useEffect(() => setCompactDensity(window.localStorage.getItem("velvet-density") === "compact"), []);
 
+  useEffect(() => {
+    const enabled = window.localStorage.getItem("velvet-transparency") === "enabled";
+    setTransparentMode(enabled);
+    document.documentElement.classList.toggle("transparent-mode", enabled);
+  }, []);
+
   function toggleDensity() {
     setCompactDensity((current) => {
       window.localStorage.setItem("velvet-density", current ? "comfortable" : "compact");
       return !current;
+    });
+  }
+
+  function toggleTransparency() {
+    setTransparentMode((current) => {
+      const enabled = !current;
+      window.localStorage.setItem("velvet-transparency", enabled ? "enabled" : "disabled");
+      document.documentElement.classList.toggle("transparent-mode", enabled);
+      return enabled;
     });
   }
 
@@ -83,7 +99,7 @@ export function VelvetApp() {
       <div className={`grid h-[calc(100vh-24px)] grid-cols-[64px_minmax(0,1fr)] gap-3 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-5 ${activeTrack ? "lg:h-[calc(100vh-136px)]" : "lg:h-[calc(100vh-40px)]"}`}>
         <Sidebar pathname={pathname} setup={setupOverview} />
         <section className="panel studio-shell flex min-h-0 flex-col overflow-hidden rounded-2xl lg:rounded-[22px]">
-          <TopBar pageTitle={pageTitle} setup={setupOverview} onOpenCommand={() => setCommandOpen(true)} compactDensity={compactDensity} onToggleDensity={toggleDensity} />
+          <TopBar pageTitle={pageTitle} setup={setupOverview} onOpenCommand={() => setCommandOpen(true)} compactDensity={compactDensity} onToggleDensity={toggleDensity} transparentMode={transparentMode} onToggleTransparency={toggleTransparency} />
           <motion.div key={pathname} className="flex min-h-0 flex-1" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}>
             {pathname === "/projects/new" ? <NewProjectFlow /> : <FreshWorkspace pathname={pathname} setup={setupOverview} />}
           </motion.div>
@@ -312,7 +328,7 @@ function isActiveNavItem(pathname: string, href: string) {
   return pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
 }
 
-function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensity }: { pageTitle: string; setup: SetupOverview; onOpenCommand: () => void; compactDensity: boolean; onToggleDensity: () => void }) {
+function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensity, transparentMode, onToggleTransparency }: { pageTitle: string; setup: SetupOverview; onOpenCommand: () => void; compactDensity: boolean; onToggleDensity: () => void; transparentMode: boolean; onToggleTransparency: () => void }) {
   const [privateAccessEnabled, setPrivateAccessEnabled] = useState(false);
   const [displayMenuOpen, setDisplayMenuOpen] = useState(false);
   const displayMenuRef = useRef<HTMLDivElement>(null);
@@ -348,7 +364,7 @@ function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensi
             aria-label="Display options"
             aria-haspopup="menu"
             aria-expanded={displayMenuOpen}
-            className={`glass-control grid h-9 w-9 place-items-center rounded-lg ${displayMenuOpen || compactDensity ? "text-[var(--rose-soft)]" : "text-[var(--text-muted)]"}`}
+            className={`glass-control grid h-9 w-9 place-items-center rounded-lg ${displayMenuOpen || compactDensity || transparentMode ? "text-[var(--rose-soft)]" : "text-[var(--text-muted)]"}`}
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
@@ -356,7 +372,7 @@ function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensi
             {displayMenuOpen ? (
               <motion.div
                 role="menu"
-                aria-label="Display density"
+                aria-label="Display options"
                 className="panel prompt-producer-dialog absolute right-0 top-11 z-40 w-52 overflow-hidden rounded-lg p-1.5"
                 initial={{ opacity: 0, y: -5, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -382,6 +398,20 @@ function TopBar({ pageTitle, setup, onOpenCommand, compactDensity, onToggleDensi
                     </button>
                   );
                 })}
+                <div className="my-1 border-t border-[var(--border)]" />
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={transparentMode}
+                  onClick={() => {
+                    onToggleTransparency();
+                    setDisplayMenuOpen(false);
+                  }}
+                  className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm text-[var(--text-secondary)] hover:bg-white/[.06] hover:text-white"
+                >
+                  <span className="w-4">{transparentMode ? <Check className="h-4 w-4 text-[var(--rose-soft)]" /> : null}</span>
+                  Wallpaper mode
+                </button>
               </motion.div>
             ) : null}
           </AnimatePresence>

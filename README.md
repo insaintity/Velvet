@@ -34,7 +34,7 @@ The app opens like a brand-new workspace and guides the user through setup befor
 - Exports a portable JSON project archive with prompts, jobs, usage, and upload history.
 - Exchanges YouTube OAuth codes for tokens and stores refresh tokens encrypted.
 - Provides backend routes for ElevenLabs music generation, render manifests, and YouTube uploads.
-- Provides a fixed, no-scroll studio interface with focus mode, density controls, command palette, animated loading states, and reduced-motion support.
+- Provides a fixed, no-scroll studio interface with focus mode, density controls, optional wallpaper transparency, command palette, animated loading states, and reduced-motion support.
 - Protects production as a private single-user studio with a signed, HTTP-only login session.
 - Schedules rendered releases for future YouTube uploads with privacy controls and cancellation.
 - Tracks successful and failed uploads, success rate, privacy mix, and six-month publishing outcomes.
@@ -88,6 +88,8 @@ npm run desktop:dist
 ```
 
 The executable is written to `release/`. Desktop projects and encrypted credentials are stored under the current Windows user's Velvet application-data directory, so replacing the executable does not remove studio data.
+
+Use **Display options > Wallpaper mode** to reveal the Windows desktop through Velvet's dark acrylic panels. The preference is stored locally and can be switched back to the solid studio background at any time.
 
 The portable build extracts its bundled runtime on launch, so the first start can take around 30-60 seconds. Later launches are normally faster while Windows retains the extracted files.
 
