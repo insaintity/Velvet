@@ -73,6 +73,7 @@ export function VelvetApp() {
   const setupOverview = useSetupOverview();
   const activeTrack = usePlayerStore((state) => state.activeTrack);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [desktopMode, setDesktopMode] = useState(false);
   const [transparentMode, setTransparentMode] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
@@ -110,13 +111,18 @@ export function VelvetApp() {
 
   useEffect(() => {
     const desktopMode = navigator.userAgent.includes("Electron");
+    setDesktopMode(desktopMode);
     document.documentElement.classList.toggle("desktop-mode", desktopMode);
-    window.localStorage.removeItem("velvet-density");
-    return () => document.documentElement.classList.remove("desktop-mode");
+    document.documentElement.classList.toggle("web-mode", !desktopMode);
+    if (!desktopMode) document.documentElement.classList.remove("transparent-mode");
+    return () => {
+      document.documentElement.classList.remove("desktop-mode");
+      document.documentElement.classList.remove("web-mode");
+    };
   }, []);
 
   useEffect(() => {
-    const enabled = window.localStorage.getItem("velvet-transparency") === "enabled";
+    const enabled = navigator.userAgent.includes("Electron") && window.localStorage.getItem("velvet-transparency") === "enabled";
     setTransparentMode(enabled);
     document.documentElement.classList.toggle("transparent-mode", enabled);
   }, []);
@@ -139,7 +145,7 @@ export function VelvetApp() {
       <div className={`grid h-[calc(100vh-24px)] grid-cols-[64px_minmax(0,1fr)] gap-3 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-5 ${activeTrack ? "lg:h-[calc(100vh-136px)]" : "lg:h-[calc(100vh-40px)]"}`}>
         <Sidebar pathname={pathname} setup={setupOverview} />
         <section className="panel studio-shell flex min-h-0 flex-col overflow-hidden rounded-2xl lg:rounded-[22px]">
-          <TopBar pageTitle={pageTitle} setup={setupOverview} onOpenCommand={() => setCommandOpen(true)} transparentMode={transparentMode} onToggleTransparency={toggleTransparency} />
+          <TopBar pageTitle={pageTitle} setup={setupOverview} onOpenCommand={() => setCommandOpen(true)} transparentMode={transparentMode} onToggleTransparency={toggleTransparency} desktopMode={desktopMode} />
           <motion.div key={pathname} className="studio-content relative z-0 flex min-h-0 flex-1" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}>
             {pathname === "/projects/new" ? <NewProjectWorkspace /> : <FreshWorkspace pathname={pathname} setup={setupOverview} />}
           </motion.div>
@@ -277,13 +283,14 @@ function Sidebar({ pathname, setup }: { pathname: string; setup: SetupOverview }
               href={item.href}
               title={item.label}
               aria-current={isActive ? "page" : undefined}
-              className={`flex h-11 items-center justify-center gap-3 rounded-lg border px-0 text-sm transition lg:justify-start lg:px-4 ${
+              className={`group relative flex h-11 items-center justify-center gap-3 rounded-lg border px-0 text-sm transition lg:justify-start lg:px-4 ${
                 isActive
                   ? "border-white/[.22] bg-white/[.105] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_10px_24px_rgba(12,8,20,.12)]"
                   : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-hover)] hover:bg-white/[0.055] hover:text-white"
               }`}
             >
-              <Icon className={`h-[18px] w-[18px] ${isActive ? "text-[var(--rose-soft)]" : "text-[#a9a3bd]"}`} />
+              {isActive ? <motion.span layoutId="active-navigation" className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-[var(--rose-soft)]" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
+              <Icon className={`h-[18px] w-[18px] transition-transform duration-200 group-hover:translate-x-0.5 ${isActive ? "text-[var(--rose-soft)]" : "text-[#a9a3bd]"}`} />
               <span className="hidden lg:inline">{item.label}</span>
             </Link>
           );
@@ -327,7 +334,7 @@ function isActiveNavItem(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function TopBar({ pageTitle, setup, onOpenCommand, transparentMode, onToggleTransparency }: { pageTitle: string; setup: SetupOverview; onOpenCommand: () => void; transparentMode: boolean; onToggleTransparency: () => void }) {
+function TopBar({ pageTitle, setup, onOpenCommand, transparentMode, onToggleTransparency, desktopMode }: { pageTitle: string; setup: SetupOverview; onOpenCommand: () => void; transparentMode: boolean; onToggleTransparency: () => void; desktopMode: boolean }) {
   const [privateAccessEnabled, setPrivateAccessEnabled] = useState(false);
   const [displayMenuOpen, setDisplayMenuOpen] = useState(false);
   const displayMenuRef = useRef<HTMLDivElement>(null);
@@ -356,7 +363,8 @@ function TopBar({ pageTitle, setup, onOpenCommand, transparentMode, onToggleTran
         <span className="text-[var(--text-primary)]">{pageTitle}</span>
       </div>
       <div className="flex items-center gap-3">
-        <div ref={displayMenuRef} className="relative">
+        {!desktopMode ? <div className="hidden items-center gap-2 rounded-full border border-[rgba(143,195,177,.18)] bg-[rgba(143,195,177,.06)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--success)] md:flex"><span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--success)] opacity-40" /><span className="relative h-1.5 w-1.5 rounded-full bg-[var(--success)]" /></span>Hosted studio</div> : null}
+        {desktopMode ? <div ref={displayMenuRef} className="relative">
           <button
             onClick={() => setDisplayMenuOpen((current) => !current)}
             title="Display options"
@@ -394,7 +402,7 @@ function TopBar({ pageTitle, setup, onOpenCommand, transparentMode, onToggleTran
               </motion.div>
             ) : null}
           </AnimatePresence>
-        </div>
+        </div> : null}
         <button onClick={onOpenCommand} title="Open command palette" aria-label="Open command palette" className="glass-control grid h-9 w-9 place-items-center rounded-lg text-[var(--text-muted)] hover:text-white">
           <Search className="h-4 w-4" />
         </button>
@@ -1143,6 +1151,15 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
   const [completed, setCompleted] = useState<[boolean, boolean, boolean]>([false, false, false]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("Connect each service once. You can replace credentials later in Settings.");
+  const youtubeWait = useRef<AbortController | undefined>(undefined);
+
+  function finishLater() {
+    youtubeWait.current?.abort();
+    setBusy(false);
+    onDismiss(false);
+  }
+
+  useEffect(() => () => youtubeWait.current?.abort(), []);
 
   useEffect(() => {
     if (!open) return;
@@ -1219,13 +1236,17 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
     setMessage("Finish signing in with your Google account. Velvet will connect automatically.");
     window.open("/api/youtube/login", "_blank", "noopener,noreferrer");
 
+    const controller = new AbortController();
+    youtubeWait.current?.abort();
+    youtubeWait.current = controller;
     try {
-      const data = await waitForYouTubeConnection();
+      const data = await waitForYouTubeConnection(180_000, controller.signal);
       setCompleted((current) => [current[0], current[1], true]);
       setMessage(data.setup?.youtube?.status?.message ?? "YouTube connected successfully.");
       setBusy(false);
       onDismiss(true);
     } catch (error) {
+      if (controller.signal.aborted) return;
       setBusy(false);
       setMessage(error instanceof Error ? error.message : "YouTube sign-in was not completed.");
     }
@@ -1298,7 +1319,7 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
             <div className={`rounded-lg border px-3 py-2 text-xs ${message.toLowerCase().includes("could not") || message.toLowerCase().includes("needs") ? "border-[rgba(213,143,154,0.3)] bg-[rgba(213,143,154,0.07)]" : "border-[var(--border)] bg-white/[0.025]"}`} aria-live="polite">{message}</div>
 
             <footer className="mt-4 flex items-center justify-between gap-3">
-              <button type="button" onClick={() => onDismiss(false)} disabled={busy} className="h-9 rounded-lg px-3 text-xs text-[var(--text-muted)] hover:bg-white/[0.05] hover:text-white disabled:opacity-40">Finish later in Settings</button>
+              <button type="button" onClick={finishLater} className="h-9 rounded-lg px-3 text-xs text-[var(--text-muted)] hover:bg-white/[0.05] hover:text-white">Finish later in Settings</button>
               <div className="flex items-center gap-2">
                 {step > 0 ? <button type="button" onClick={() => setStep((current) => current - 1)} disabled={busy} className="h-9 rounded-lg border border-[var(--border)] px-4 text-xs text-[var(--text-secondary)] disabled:opacity-40">Back</button> : null}
                 <button type="button" onClick={() => step === 0 ? saveProvider("openai") : step === 1 ? saveProvider("elevenlabs") : connectYouTubeAccount()} disabled={busy} className="glass-primary flex h-9 min-w-36 items-center justify-center gap-2 rounded-lg px-4 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-45">

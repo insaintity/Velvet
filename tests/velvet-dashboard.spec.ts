@@ -113,6 +113,7 @@ test.describe("Velvet dashboard", () => {
     ]);
 
     await expect(page.getByRole("group", { name: "Window controls" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Display options" })).toBeVisible();
     await page.getByRole("button", { name: "Minimize window" }).click();
     await expect.poll(() => page.evaluate(() => window.localStorage.getItem("test-window-action"))).toBe("minimize");
   });
@@ -130,13 +131,9 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("link", { name: "New Media" })).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("link", { name: "Projects" })).not.toHaveAttribute("aria-current", "page");
 
-    await page.getByRole("button", { name: "Display options" }).click();
-    const displayMenu = page.getByRole("menu", { name: "Display options" });
-    await expect(displayMenu).toBeVisible();
-    await expect(displayMenu.getByRole("menuitemradio")).toHaveCount(0);
-    await displayMenu.getByRole("menuitemcheckbox", { name: "Wallpaper mode" }).click();
-    await expect(page.locator("html")).toHaveClass(/transparent-mode/);
-    await expect(page.locator(".studio-shell")).toHaveCSS("background-color", "rgba(14, 12, 22, 0.04)");
+    await expect(page.locator("html")).toHaveClass(/web-mode/);
+    await expect(page.getByRole("button", { name: "Display options" })).toHaveCount(0);
+    await expect(page.getByText("Hosted studio")).toBeVisible();
   });
 
   test("advances onboarding after both provider keys validate", async ({ page }) => {
@@ -217,6 +214,7 @@ test.describe("Velvet dashboard", () => {
         })
       });
     });
+    await page.route("**/api/setup/youtube-oauth", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ configured: true }) }));
     await page.goto("/projects/new");
     const dialog = page.getByRole("dialog", { name: "Set up your Velvet studio." });
     await expect(dialog).toBeVisible();
@@ -232,6 +230,10 @@ test.describe("Velvet dashboard", () => {
     await expect(dialog.getByRole("link", { name: "Open Google OAuth setup" })).toHaveAttribute("href", "https://console.cloud.google.com/apis/credentials");
     await expect(dialog.getByRole("button", { name: "Log in with YouTube" })).toBeEnabled();
 
+    await dialog.getByLabel("Google OAuth client ID").fill("test.apps.googleusercontent.com");
+    await page.evaluate(() => { window.open = () => null; });
+    await dialog.getByRole("button", { name: "Log in with YouTube" }).click();
+    await expect(dialog.getByText("Finish signing in with your Google account. Velvet will connect automatically.")).toBeVisible();
     await dialog.getByRole("button", { name: "Finish later in Settings" }).click();
     await expect(dialog).toHaveCount(0);
     await page.reload();

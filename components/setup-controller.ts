@@ -90,10 +90,17 @@ export async function configureYouTubeOAuth(clientId: string, clientSecret = "")
   return data as { configured: true };
 }
 
-export async function waitForYouTubeConnection(timeoutMs = 180_000) {
+export async function waitForYouTubeConnection(timeoutMs = 180_000, signal?: AbortSignal) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    await new Promise((resolve) => window.setTimeout(resolve, 1_000));
+    if (signal?.aborted) throw new DOMException("YouTube connection cancelled.", "AbortError");
+    await new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(resolve, 1_000);
+      signal?.addEventListener("abort", () => {
+        window.clearTimeout(timer);
+        reject(new DOMException("YouTube connection cancelled.", "AbortError"));
+      }, { once: true });
+    });
     const data = await refreshSetup(true).catch(() => undefined);
     if (data?.setup?.youtube?.status?.state === "connected") return data;
   }
