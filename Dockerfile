@@ -24,8 +24,8 @@ RUN npm ci --omit=dev \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/.next/standalone ./.next/standalone
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/static ./.next/standalone/.next/static
+COPY --from=builder /app/public ./.next/standalone/public
 COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/workers ./workers
 COPY --from=builder /app/package.json ./package.json
