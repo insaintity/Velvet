@@ -164,20 +164,26 @@ const emptySetupOverview: SetupOverview = {
 function useSetupOverview() {
   const [setup, setSetup] = useState<SetupOverview>(emptySetupOverview);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     fetch("/api/setup")
       .then((response) => response.json())
       .then((data) => {
         const services = [
-          { label: "ChatGPT", ready: Boolean(data.secrets?.openai) },
-          { label: "ElevenLabs", ready: Boolean(data.secrets?.elevenlabs) },
-          { label: "YouTube", ready: Boolean(data.secrets?.youtube) }
+          { label: "ChatGPT", ready: Boolean(data.secrets?.openai && data.setup?.openai?.status?.state === "valid") },
+          { label: "ElevenLabs", ready: Boolean(data.secrets?.elevenlabs && data.setup?.elevenlabs?.status?.state === "valid") },
+          { label: "YouTube", ready: Boolean(data.secrets?.youtube && data.setup?.youtube?.status?.state === "connected") }
         ];
         const readyCount = services.filter((service) => service.ready).length;
         setSetup({ services, readyCount, isComplete: readyCount === services.length });
       })
       .catch(() => setSetup(emptySetupOverview));
   }, []);
+
+  useEffect(() => {
+    refresh();
+    window.addEventListener("velvet:setup-updated", refresh);
+    return () => window.removeEventListener("velvet:setup-updated", refresh);
+  }, [refresh]);
 
   return setup;
 }
@@ -1187,7 +1193,8 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
   const [youtubeStatus, setYoutubeStatus] = useState<string | null>(null);
   const [activeSetupStep, setActiveSetupStep] = useState<"services" | "youtube" | "review">("services");
   const [activeService, setActiveService] = useState<"openai" | "elevenlabs">("openai");
-  const [savedNotice, setSavedNotice] = useState(false);
+  const [setupSaveState, setSetupSaveState] = useState<"idle" | "saving" | "success" | "error">("idle");
+  const [savingSetup, setSavingSetup] = useState(false);
   const [setupMessage, setSetupMessage] = useState("Keys are encrypted before being stored locally.");
   const [providerStatus, setProviderStatus] = useState<Record<string, ClientStatus>>({});
   const [savedKeyHints, setSavedKeyHints] = useState<Record<"openai" | "elevenlabs", string | undefined>>({ openai: undefined, elevenlabs: undefined });
@@ -1218,6 +1225,11 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
     ...service,
     status: providerStatus[service.label === "ChatGPT" ? "openai" : service.label === "ElevenLabs" ? "elevenlabs" : "youtube"]
   }));
+  const openaiReady = providerStatus.openai?.state === "valid" || setup.services[0]?.ready;
+  const elevenLabsReady = providerStatus.elevenlabs?.state === "valid" || setup.services[1]?.ready;
+  const aiMusicReady = Boolean(openaiReady && elevenLabsReady);
+  const youtubeReady = providerStatus.youtube?.state === "connected" || setup.services[2]?.ready;
+  const onboardingReadyCount = aiMusicReady ? (youtubeReady ? 3 : 1) : 0;
 
   useEffect(() => {
     setYoutubeStatus(new URLSearchParams(window.location.search).get("youtube"));
@@ -1262,44 +1274,74 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
   }
 
   async function saveSetup(validateServices = true) {
+    setSavingSetup(true);
+    setSetupSaveState("saving");
     setSetupMessage("Saving encrypted setup...");
-    const response = await fetch("/api/setup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(setupForm)
-    });
-    const data = await response.json();
-    const savedStatuses = {
-      openai: data.setup?.openai?.status,
-      elevenlabs: data.setup?.elevenlabs?.status,
-      youtube: data.setup?.youtube?.status,
-      worker: data.setup?.worker?.status,
-      database: data.setup?.worker?.databaseStatus
-    };
-    setProviderStatus(savedStatuses);
-    setSavedKeyHints({ openai: data.secretHints?.openai, elevenlabs: data.secretHints?.elevenlabs });
-    setSavedNotice(response.ok);
-    setSetupMessage(response.ok ? "Setup saved. Checking connected services..." : "Setup could not be saved.");
+    try {
+      const response = await fetch("/api/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(setupForm)
+      });
+      const data = await response.json();
+      const savedStatuses = {
+        openai: data.setup?.openai?.status,
+        elevenlabs: data.setup?.elevenlabs?.status,
+        youtube: data.setup?.youtube?.status,
+        worker: data.setup?.worker?.status,
+        database: data.setup?.worker?.databaseStatus
+      };
+      setProviderStatus(savedStatuses);
+      setSavedKeyHints({ openai: data.secretHints?.openai, elevenlabs: data.secretHints?.elevenlabs });
+      setSetupSaveState(response.ok ? "success" : "error");
+      setSetupMessage(response.ok ? "Setup saved. Checking connected services..." : (data.error ?? "Setup could not be saved."));
 
-    if (response.ok && validateServices) {
-      const providers = (["openai", "elevenlabs", "database", "storage"] as const).filter((provider) => data.secrets?.[provider]);
-      const results: Array<{ provider: "openai" | "elevenlabs" | "database" | "storage"; status: ClientStatus }> = [];
-      for (const provider of providers) {
-        const validation = await fetch("/api/setup/validate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ provider })
-        });
-        const result = await validation.json();
-        results.push({ provider, status: result.status ?? { state: "invalid", message: "Provider check failed." } });
+      if (!response.ok) return false;
+
+      if (validateServices) {
+        const providers = (["openai", "elevenlabs", "database", "storage"] as const).filter((provider) => data.secrets?.[provider]);
+        const results: Array<{ provider: "openai" | "elevenlabs" | "database" | "storage"; status: ClientStatus }> = [];
+        for (const provider of providers) {
+          const validation = await fetch("/api/setup/validate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ provider })
+          });
+          const result = await validation.json();
+          results.push({ provider, status: result.status ?? { state: "invalid", message: "Provider check failed." } });
+        }
+        const checkedStatuses = Object.fromEntries(results.map(({ provider, status }) => [provider, status]));
+        const nextStatuses = { ...savedStatuses, ...checkedStatuses };
+        setProviderStatus(nextStatuses);
+
+        const failedServices = results
+          .filter(({ provider, status }) => (provider === "openai" || provider === "elevenlabs") && status.state !== "valid")
+          .map(({ provider }) => provider === "openai" ? "ChatGPT" : "ElevenLabs");
+        const coreServicesReady = nextStatuses.openai?.state === "valid" && nextStatuses.elevenlabs?.state === "valid";
+
+        if (coreServicesReady && activeSetupStep === "services") {
+          setActiveSetupStep("youtube");
+          setSetupSaveState("success");
+          setSetupMessage("ChatGPT and ElevenLabs are connected. Continue with YouTube.");
+        } else if (failedServices.length) {
+          setSetupSaveState("error");
+          setSetupMessage(`${failedServices.join(" and ")} could not be verified. Check the status below and try again.`);
+        } else {
+          setSetupMessage(results.length ? "Setup saved and connected services checked." : "Setup saved.");
+        }
+      } else {
+        setSetupMessage("Setup saved.");
       }
-      setProviderStatus((current) => ({
-        ...current,
-        ...Object.fromEntries(results.map(({ provider, status }) => [provider, status]))
-      }));
-      setSetupMessage(results.length ? "Setup saved and connected services checked." : "Setup saved.");
+
+      window.dispatchEvent(new Event("velvet:setup-updated"));
+      return true;
+    } catch {
+      setSetupSaveState("error");
+      setSetupMessage("Setup could not be saved. Check your connection and try again.");
+      return false;
+    } finally {
+      setSavingSetup(false);
     }
-    return response.ok;
   }
 
   async function connectYouTube() {
@@ -1340,12 +1382,12 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
             <div className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
               <div className="text-xs text-[var(--text-muted)]">Setup progress</div>
               <div className="setup-progress-count mt-2 whitespace-nowrap text-[28px] font-semibold leading-none tabular-nums tracking-normal text-white">
-                {setup.readyCount}<span className="mx-1 text-[var(--text-muted)]">/</span>3
+                {onboardingReadyCount}<span className="mx-1 text-[var(--text-muted)]">/</span>3
               </div>
               <div className="mt-2 h-1.5 rounded-full bg-black/25">
                 <div
                   className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--rose))] transition-[width] duration-500"
-                  style={{ width: `${(setup.readyCount / 3) * 100}%` }}
+                  style={{ width: `${(onboardingReadyCount / 3) * 100}%` }}
                 />
               </div>
             </div>
@@ -1354,7 +1396,9 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
                 ["services", "01", "AI + Music"],
                 ["youtube", "02", "YouTube"],
                 ["review", "03", "Advanced"]
-              ].map(([key, number, label]) => (
+              ].map(([key, number, label]) => {
+                const completed = key === "services" ? aiMusicReady : key === "youtube" ? youtubeReady : youtubeReady;
+                return (
                 <button
                   key={key}
                   data-testid="onboarding-step"
@@ -1363,10 +1407,11 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
                     activeSetupStep === key ? "border-[var(--border-active)] bg-[rgba(239,99,152,0.09)]" : "border-[var(--border)] bg-white/[0.035]"
                   }`}
                 >
-                  <span className="tabular text-[11px] leading-none text-[var(--rose-soft)]">{number}</span>
+                  <span className="tabular text-[11px] leading-none text-[var(--rose-soft)]">{completed ? <Check className="h-3.5 w-3.5" aria-label={`${label} complete`} /> : number}</span>
                   <span className="mt-1.5 truncate text-[11px] font-medium leading-none">{label}</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -1523,14 +1568,15 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
             </div>
             <button
               onClick={() => saveSetup()}
+              disabled={savingSetup}
               className="h-10 shrink-0 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 text-sm font-medium"
               title="Stores configuration after backend secret storage is enabled."
             >
-              Save Setup
+              {savingSetup ? "Checking..." : "Save Setup"}
             </button>
           </div>
-          {savedNotice ? (
-            <div className="mt-2 rounded-lg border border-[rgba(88,182,168,0.22)] bg-[rgba(88,182,168,0.06)] px-3 py-2 text-xs text-[var(--text-secondary)]">
+          {setupSaveState !== "idle" ? (
+            <div className={`mt-2 rounded-lg border px-3 py-2 text-xs text-[var(--text-secondary)] ${setupSaveState === "error" ? "border-[rgba(213,143,154,0.32)] bg-[rgba(213,143,154,0.08)]" : "border-[rgba(88,182,168,0.22)] bg-[rgba(88,182,168,0.06)]"}`}>
               {setupMessage}
             </div>
           ) : null}

@@ -136,6 +136,59 @@ test.describe("Velvet dashboard", () => {
     await expect(page.locator(".studio-shell")).toHaveCSS("background-color", "rgba(14, 12, 22, 0.04)");
   });
 
+  test("advances onboarding after both provider keys validate", async ({ page }) => {
+    let setupReady = false;
+    await page.route("**/api/setup", async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            setup: {
+              openai: { status: { state: "unchecked", message: "Saved, not checked yet." } },
+              elevenlabs: { status: { state: "unchecked", message: "Saved, not checked yet." } }
+            },
+            secrets: { openai: true, elevenlabs: true, youtube: false, database: false, storage: false },
+            secretHints: { openai: "sk-••••1234", elevenlabs: "••••5678" }
+          })
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          setup: setupReady ? {
+            openai: { status: { state: "valid" } },
+            elevenlabs: { status: { state: "valid" } }
+          } : {},
+          secrets: { openai: setupReady, elevenlabs: setupReady, youtube: false },
+          secretHints: {}
+        })
+      });
+    });
+    await page.route("**/api/setup/validate", async (route) => {
+      setupReady = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: { state: "valid", message: "Key is valid." } })
+      });
+    });
+
+    await page.goto("/settings");
+    await page.getByLabel("OpenAI API key").fill("sk-test-openai");
+    await page.getByRole("button", { name: "ElevenLabs", exact: true }).click();
+    await page.getByLabel("ElevenLabs API key").fill("test-elevenlabs");
+    await page.getByRole("button", { name: "Save Setup" }).click();
+
+    await expect(page.getByText("ChatGPT and ElevenLabs are connected. Continue with YouTube.")).toBeVisible();
+    await expect(page.locator(".setup-progress-count")).toHaveText(/1\s*\/\s*3/);
+    await expect(page.getByRole("heading", { name: "YouTube" })).toBeVisible();
+    await expect(page.getByLabel("AI + Music complete")).toBeVisible();
+  });
+
   test("builds an editable brief with Prompt Producer", async ({ page }) => {
     await page.route("**/api/prompts/compose", async (route) => {
       await route.fulfill({
