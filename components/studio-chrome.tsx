@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, CalendarClock, FolderKanban, History, LayoutDashboard, Plus, Search, Settings, X } from "lucide-react";
+import { BarChart3, CalendarClock, FolderKanban, History, Plus, Search, Settings, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 
 const commands = [
-  { label: "Dashboard", detail: "Studio overview", href: "/dashboard", icon: LayoutDashboard },
   { label: "New Media", detail: "Create a song or album", href: "/projects/new", icon: Plus },
   { label: "Projects", detail: "Open recent work", href: "/projects", icon: FolderKanban },
   { label: "Scheduler", detail: "Plan YouTube uploads", href: "/publishing", icon: CalendarClock },

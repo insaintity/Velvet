@@ -64,7 +64,7 @@ npm run dev
 Open:
 
 ```text
-http://localhost:3000/dashboard
+http://localhost:3000/projects/new
 ```
 
 Run the worker in a second terminal when you want queued generation, render, and upload jobs to process:
@@ -99,7 +99,6 @@ Railway is the recommended low-cost production target. The root Docker image inc
 
 ## Available Routes
 
-- `/dashboard` - first-launch studio overview
 - `/projects/new` - New Media prompt entry for songs or albums
 - `/projects` - empty project library
 - `/publishing` - schedule rendered releases for YouTube

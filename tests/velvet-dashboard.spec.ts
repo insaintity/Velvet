@@ -64,10 +64,11 @@ test.describe("Velvet dashboard", () => {
   test("renders the first-launch studio shell", async ({ page }, testInfo) => {
     await page.goto("/dashboard");
 
+    await expect(page).toHaveURL(/\/projects\/new$/);
     await expect(page.getByRole("link", { name: "velvet AI music foundry" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Create your first AI music release." })).toBeVisible();
-    await expect(page.getByText("Connect ChatGPT, ElevenLabs, and YouTube before creating the first release.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Start Setup" }).first()).toHaveAttribute("href", "/settings");
+    await expect(page.getByRole("dialog", { name: "Set up your Velvet studio." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Describe the song or album." })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Dashboard" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Setup Required" })).toHaveAttribute("href", "/settings");
     await expect(page.getByRole("button", { name: /Play|Pause/ })).toHaveCount(0);
 
@@ -79,7 +80,8 @@ test.describe("Velvet dashboard", () => {
   });
 
   test("reserves a ten-pixel desktop drag perimeter without blocking the browser", async ({ page }) => {
-    await page.goto("/dashboard");
+    await page.addInitScript(() => window.localStorage.setItem("velvet-onboarding", "dismissed"));
+    await page.goto("/projects/new");
     const edges = page.locator(".window-drag-edge");
     await expect(edges).toHaveCount(4);
     await expect(edges.first()).toHaveCSS("pointer-events", "none");
@@ -116,6 +118,7 @@ test.describe("Velvet dashboard", () => {
   });
 
   test("renders the guided new-project flow", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("velvet-onboarding", "dismissed"));
     await page.goto("/projects/new");
 
     await expect(page.getByRole("heading", { name: "Describe the song or album." })).toBeVisible();
@@ -227,7 +230,7 @@ test.describe("Velvet dashboard", () => {
       });
     });
 
-    await page.goto("/dashboard");
+    await page.goto("/projects/new");
     const dialog = page.getByRole("dialog", { name: "Set up your Velvet studio." });
     await expect(dialog).toBeVisible();
 
@@ -238,7 +241,9 @@ test.describe("Velvet dashboard", () => {
     await dialog.getByLabel("ElevenLabs API key").fill("test-elevenlabs");
     await dialog.getByRole("button", { name: "Save & Continue" }).click();
     await expect(dialog.getByText("Connect YouTube")).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "Configure YouTube" })).toBeEnabled();
+    await expect(dialog.getByLabel("Google OAuth client ID")).toBeVisible();
+    await expect(dialog.getByRole("link", { name: "Open Google OAuth setup" })).toHaveAttribute("href", "https://console.cloud.google.com/apis/credentials");
+    await expect(dialog.getByRole("button", { name: "Log in with YouTube" })).toBeEnabled();
 
     await dialog.getByRole("button", { name: "Finish later in Settings" }).click();
     await expect(dialog).toHaveCount(0);
@@ -252,6 +257,7 @@ test.describe("Velvet dashboard", () => {
   });
 
   test("builds an editable brief with Prompt Producer", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("velvet-onboarding", "dismissed"));
     await page.route("**/api/prompts/compose", async (route) => {
       await route.fulfill({
         status: 200,
@@ -467,7 +473,8 @@ test.describe("Velvet dashboard", () => {
 
   test("keeps primary pages inside the fixed studio frame", async ({ page }) => {
     await writeFixtureDatabase();
-    for (const path of ["/dashboard", "/projects/new", "/projects", `/projects/${fixtureProjectId}`, "/publishing", "/analytics", "/history", "/settings"]) {
+    await page.addInitScript(() => window.localStorage.setItem("velvet-onboarding", "dismissed"));
+    for (const path of ["/projects/new", "/projects", `/projects/${fixtureProjectId}`, "/publishing", "/analytics", "/history", "/settings"]) {
       await page.goto(path);
       const hasScroll = await page.evaluate(() => {
         const root = document.scrollingElement ?? document.documentElement;

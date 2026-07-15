@@ -19,7 +19,7 @@ export function PrivateStudioLogin() {
     setBusy(false);
     if (!response.ok) return setError(body.error || "Velvet could not unlock the studio.");
     const returnTo = new URLSearchParams(window.location.search).get("returnTo");
-    window.location.assign(returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/dashboard");
+    window.location.assign(returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/projects/new");
   }
 
   return (

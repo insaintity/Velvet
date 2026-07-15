@@ -105,7 +105,7 @@ async function startDesktopApp() {
   });
   mainWindow.once("ready-to-show", () => mainWindow.show());
   mainWindow.on("closed", () => { mainWindow = undefined; });
-  await mainWindow.loadURL(`${localOrigin}/dashboard`);
+  await mainWindow.loadURL(`${localOrigin}/projects/new`);
 }
 
 function launchNode(entry, cwd, env, log) {

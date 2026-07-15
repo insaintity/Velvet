@@ -34,7 +34,6 @@ import {
   ShieldCheck,
   SkipBack,
   SkipForward,
-  Sparkles,
   SlidersHorizontal,
   Upload,
   Volume2,
@@ -46,7 +45,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { historyColumns, historyPromptTypes, navItems, safetyDefaults, setupSteps } from "@/lib/app-data";
+import { historyColumns, historyPromptTypes, navItems, safetyDefaults } from "@/lib/app-data";
 import { formatDuration } from "@/lib/time";
 import { usePlayerStore } from "@/store/player-store";
 import { CommandPalette, ProjectArtwork, StatusPill, Waveform } from "@/components/studio-chrome";
@@ -75,7 +74,11 @@ export function VelvetApp() {
   }, []);
 
   useEffect(() => {
-    if (!setupOverview.loaded || pathname !== "/dashboard") return;
+    if (!setupOverview.loaded) return;
+    if (pathname !== "/projects/new") {
+      setOnboardingOpen(false);
+      return;
+    }
     if (setupOverview.isComplete) {
       window.localStorage.setItem("velvet-onboarding", "complete");
       setOnboardingOpen(false);
@@ -284,7 +287,7 @@ function Sidebar({ pathname, setup }: { pathname: string; setup: SetupOverview }
   return (
     <aside className="panel studio-sidebar flex min-h-0 flex-col rounded-2xl px-2 py-4 lg:rounded-[22px] lg:px-4 lg:py-5">
       <div className="lg:px-2">
-        <Link href="/dashboard" className="flex items-center justify-center gap-3 lg:justify-start" aria-label="Velvet AI music foundry">
+        <Link href="/projects/new" className="flex items-center justify-center gap-3 lg:justify-start" aria-label="Velvet AI music foundry">
           <span className="brand-mark grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-[rgba(239,99,152,0.2)] bg-white/[0.035]">
             <Image src="/brand/velvet-mark.png" alt="" width={34} height={34} priority className="h-[34px] w-[34px] object-contain" />
           </span>
@@ -356,7 +359,7 @@ function isActiveNavItem(pathname: string, href: string) {
     return pathname === "/projects/new";
   }
 
-  return pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function TopBar({ pageTitle, setup, onOpenCommand, transparentMode, onToggleTransparency }: { pageTitle: string; setup: SetupOverview; onOpenCommand: () => void; transparentMode: boolean; onToggleTransparency: () => void }) {
@@ -381,7 +384,7 @@ function TopBar({ pageTitle, setup, onOpenCommand, transparentMode, onToggleTran
   return (
     <header className="studio-topbar relative z-50 flex h-[58px] shrink-0 items-center justify-between overflow-visible border-b border-[var(--border)] px-3 lg:h-[62px] lg:px-6">
       <div className="flex items-center gap-3 text-sm text-[var(--text-muted)]">
-        <Link href="/dashboard" className="hidden hover:text-white sm:block">
+        <Link href="/projects/new" className="hidden hover:text-white sm:block">
           Studio
         </Link>
         <span className="hidden sm:block">/</span>
@@ -502,60 +505,7 @@ function FreshWorkspace({ pathname, setup }: { pathname: string; setup: SetupOve
     return <HistoryWorkspace />;
   }
 
-  return <DashboardWorkspace setup={setup} />;
-}
-
-function DashboardWorkspace({ setup }: { setup: SetupOverview }) {
-  return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-3 lg:p-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:gap-5">
-      <section className="panel relative overflow-hidden rounded-xl p-6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_12%,rgba(74,110,232,0.16),transparent_34%),radial-gradient(circle_at_12%_90%,rgba(239,99,152,0.11),transparent_30%)]" />
-        <motion.div className="pointer-events-none absolute right-[7%] top-[8%] h-64 w-64 opacity-[0.045]" animate={{ y: [0, -6, 0], rotate: [0, 1, 0] }} transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}>
-          <Image src="/brand/velvet-mark.png" alt="" fill sizes="256px" className="object-contain" />
-        </motion.div>
-        <div className="relative max-w-3xl">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[rgba(239,99,152,0.26)] bg-[rgba(239,99,152,0.08)] px-3 py-1 text-xs text-[var(--rose-soft)]">
-            <Sparkles className="h-3.5 w-3.5" />
-            First launch
-          </div>
-          <h1 className="font-serif text-[42px] leading-none text-white lg:text-[52px]">Create your first AI music release.</h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--text-secondary)]">
-            Start with a short song or album prompt. Velvet will prepare a blueprint for review before any generation, rendering or upload work begins.
-          </p>
-          <div className="mt-7 flex gap-3">
-            <Link
-              href={setup.isComplete ? "/projects/new" : "/settings"}
-              className="flex h-11 items-center gap-2 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 font-medium"
-            >
-              {setup.isComplete ? "Create New Media" : "Start Setup"}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            {!setup.isComplete ? (
-              <div className="flex h-11 items-center gap-2 px-2 text-sm text-[var(--text-muted)]">
-                <Lock className="h-4 w-4" />
-                {setup.readyCount} of 3 services ready
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div className="relative mt-6 grid grid-cols-3 gap-3">
-          {setupSteps.map((step, index) => (
-            <Link key={step.title} href={step.href} className="rounded-lg bg-black/15 p-4 ring-1 ring-inset ring-[var(--border)] transition hover:-translate-y-0.5 hover:bg-white/[0.035] hover:ring-[var(--border-hover)]">
-              <div className="tabular text-xs text-[var(--rose-soft)]">0{index + 1}</div>
-              <h2 className="mt-3 text-sm font-semibold">{step.title}</h2>
-              <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">{step.body}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <aside className="hidden min-h-0 content-start gap-5 py-1 xl:grid">
-        <EmptyPanel className="min-h-[132px]" title="Setup Required" body="Connect ChatGPT, ElevenLabs, and YouTube before creating the first release." action="Start setup" href="/settings" />
-        <EmptyPanel className="min-h-[116px]" title="Generation Queue" body="Tracks appear here after a blueprint is approved." />
-        <EmptyPanel className="min-h-[132px]" title="Publishing" body="Connect a channel before YouTube publishing." href="/settings/youtube" action="Connect YouTube" />
-      </aside>
-    </div>
-  );
+  return <ProjectsWorkspace />;
 }
 
 function ProjectsWorkspace() {
@@ -1214,6 +1164,8 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
   const [step, setStep] = useState(0);
   const [openaiKey, setOpenaiKey] = useState("");
   const [elevenLabsKey, setElevenLabsKey] = useState("");
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [googleClientSecret, setGoogleClientSecret] = useState("");
   const [youtubeLoginAvailable, setYoutubeLoginAvailable] = useState(false);
   const [completed, setCompleted] = useState<[boolean, boolean, boolean]>([false, false, false]);
   const [busy, setBusy] = useState(false);
@@ -1289,13 +1241,33 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
       onDismiss(true);
       return;
     }
+    setBusy(true);
     if (!youtubeLoginAvailable) {
-      onDismiss(false);
-      window.location.assign("/settings?setup=youtube");
-      return;
+      if (!googleClientId.trim()) {
+        setBusy(false);
+        setMessage("Add the Google OAuth client ID below, then select Log in with YouTube.");
+        return;
+      }
+
+      setMessage("Saving the encrypted Google connection...");
+      try {
+        const response = await fetch("/api/setup/youtube-oauth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientId: googleClientId, clientSecret: googleClientSecret })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.configured) throw new Error(data.error ?? "Google sign-in could not be configured.");
+        setYoutubeLoginAvailable(true);
+        setGoogleClientId("");
+        setGoogleClientSecret("");
+      } catch (error) {
+        setBusy(false);
+        setMessage(error instanceof Error ? error.message : "Google sign-in could not be configured.");
+        return;
+      }
     }
 
-    setBusy(true);
     setMessage("Finish signing in with your Google account. Velvet will connect automatically.");
     window.open("/api/youtube/login", "_blank", "noopener,noreferrer");
 
@@ -1364,9 +1336,22 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
               ) : (
                 <div>
                   <div className="flex items-center gap-3"><Youtube className="h-5 w-5 text-[#ff4965]" /><div><h3 className="text-base font-medium">Connect YouTube</h3><p className="text-xs text-[var(--text-muted)]">Choose your Google account in the system browser. Velvet never sees your password.</p></div></div>
-                  <div className="mt-4 rounded-lg border border-[var(--border)] bg-black/15 p-4 text-xs leading-5 text-[var(--text-secondary)]">
-                    {completed[2] ? "YouTube is already connected." : youtubeLoginAvailable ? "Google will ask permission to identify your channel and upload videos. New uploads remain private by default." : "Google sign-in is waiting for the app owner's OAuth client ID. You can finish this step later in Settings."}
-                  </div>
+                  {completed[2] || youtubeLoginAvailable ? (
+                    <div className="mt-4 rounded-lg border border-[var(--border)] bg-black/15 p-4 text-xs leading-5 text-[var(--text-secondary)]">
+                      {completed[2] ? "YouTube is already connected." : "Google will ask permission to identify your channel and upload videos. New uploads remain private by default."}
+                    </div>
+                  ) : (
+                    <div className="mt-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="Google OAuth client ID" placeholder="...apps.googleusercontent.com" value={googleClientId} onChange={setGoogleClientId} help="Create a Desktop app OAuth client for this private Velvet installation." helpResource={{ href: "https://console.cloud.google.com/apis/credentials", linkLabel: "Open Google Cloud credentials", steps: "Enable YouTube Data API v3, configure the OAuth consent screen, then create an OAuth client ID for a Desktop app." }} />
+                        <Field label="Google OAuth client secret" placeholder="Optional for Desktop app clients" secret value={googleClientSecret} onChange={setGoogleClientSecret} help="Usually optional. Add it only if Google supplied one for this client." />
+                      </div>
+                      <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="mt-3 inline-flex h-8 items-center gap-2 rounded-lg border border-[var(--border)] bg-white/[0.035] px-3 text-xs text-[var(--rose-soft)] hover:border-[var(--border-hover)] hover:text-white">
+                        Open Google OAuth setup
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -1378,7 +1363,7 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
               <div className="flex items-center gap-2">
                 {step > 0 ? <button type="button" onClick={() => setStep((current) => current - 1)} disabled={busy} className="h-9 rounded-lg border border-[var(--border)] px-4 text-xs text-[var(--text-secondary)] disabled:opacity-40">Back</button> : null}
                 <button type="button" onClick={() => step === 0 ? saveProvider("openai") : step === 1 ? saveProvider("elevenlabs") : connectYouTubeAccount()} disabled={busy} className="glass-primary flex h-9 min-w-36 items-center justify-center gap-2 rounded-lg px-4 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-45">
-                  {busy ? "Checking..." : step === 0 || step === 1 ? (completed[step] ? "Continue" : "Save & Continue") : completed[2] ? "Finish setup" : youtubeLoginAvailable ? "Log in with YouTube" : "Configure YouTube"}
+                  {busy ? "Checking..." : step === 0 || step === 1 ? (completed[step] ? "Continue" : "Save & Continue") : completed[2] ? "Finish setup" : "Log in with YouTube"}
                   {!busy ? <ArrowRight className="h-3.5 w-3.5" /> : null}
                 </button>
               </div>

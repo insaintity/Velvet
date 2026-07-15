@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
 
 function redirectToLogin(request: NextRequest, reason?: string) {
   const login = new URL("/login", request.url);
-  if (request.nextUrl.pathname !== "/dashboard") login.searchParams.set("returnTo", request.nextUrl.pathname);
+  if (request.nextUrl.pathname !== "/projects/new" && request.nextUrl.pathname !== "/dashboard") login.searchParams.set("returnTo", request.nextUrl.pathname);
   if (reason) login.searchParams.set("reason", reason);
   return NextResponse.redirect(login);
 }
