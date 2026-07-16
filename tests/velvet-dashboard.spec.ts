@@ -78,6 +78,13 @@ test.describe("Velvet dashboard", () => {
     await expect(page).toHaveURL(/\/projects\/new$/);
   });
 
+  test("opens new media as the first studio page", async ({ page }) => {
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/projects\/new$/);
+    await expect(page.getByRole("heading", { name: "Describe the song or album." })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Set up your Velvet studio." })).toBeVisible();
+  });
+
   test("renders the first-launch studio shell", async ({ page }, testInfo) => {
     await page.goto("/dashboard");
 
