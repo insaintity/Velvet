@@ -118,7 +118,7 @@ export function VelvetApp() {
       <div aria-hidden="true" className="window-drag-edge window-drag-edge-right" />
       <div aria-hidden="true" className="window-drag-edge window-drag-edge-bottom" />
       <div aria-hidden="true" className="window-drag-edge window-drag-edge-left" />
-      <div className={`grid h-[calc(100vh-24px)] grid-cols-[64px_minmax(0,1fr)] gap-3 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-5 ${activeTrack ? "lg:h-[calc(100vh-136px)]" : "lg:h-[calc(100vh-40px)]"}`}>
+      <div className={`studio-frame grid h-[calc(100vh-24px)] grid-cols-[64px_minmax(0,1fr)] gap-3 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-5 ${activeTrack ? "lg:h-[calc(100vh-136px)]" : "lg:h-[calc(100vh-40px)]"}`}>
         <Sidebar pathname={pathname} setup={setupOverview} />
         <section className="panel studio-shell flex min-h-0 flex-col overflow-hidden rounded-2xl lg:rounded-[22px]">
           <TopBar pageTitle={pageTitle} setup={setupOverview} onOpenCommand={() => setCommandOpen(true)} />
@@ -251,7 +251,7 @@ function Sidebar({ pathname, setup }: { pathname: string; setup: SetupOverview }
         </Link>
       </div>
 
-      <nav className="mt-7 flex-1 space-y-1">
+      <nav className="studio-nav mt-7 flex-1 space-y-1">
         {navItems.map((item) => {
           const isActive = isActiveNavItem(pathname, item.href);
           const Icon = item.icon;
@@ -269,7 +269,7 @@ function Sidebar({ pathname, setup }: { pathname: string; setup: SetupOverview }
             >
               {isActive ? <motion.span layoutId="active-navigation" className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-[var(--rose-soft)]" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
               <Icon className={`h-[18px] w-[18px] transition-transform duration-200 group-hover:translate-x-0.5 ${isActive ? "text-[var(--rose-soft)]" : "text-[#a9a3bd]"}`} />
-              <span className="hidden lg:inline">{item.label}</span>
+              <span className="studio-nav-label hidden lg:inline">{item.label}</span>
             </Link>
           );
         })}

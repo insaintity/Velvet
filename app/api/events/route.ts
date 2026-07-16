@@ -12,7 +12,19 @@ export function GET(request: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      controller.enqueue(encoder.encode("retry: 1000\nevent: ready\ndata: {}\n\n"));
+      const send = (chunk: string) => {
+        if (closed) return false;
+        try {
+          controller.enqueue(encoder.encode(chunk));
+          return true;
+        } catch {
+          closed = true;
+          if (timer) clearTimeout(timer);
+          return false;
+        }
+      };
+
+      send("retry: 1000\nevent: ready\ndata: {}\n\n");
       const publish = async () => {
         if (closed) return;
         let changed = false;
@@ -29,10 +41,10 @@ export function GET(request: Request) {
           if (fingerprint !== lastFingerprint) {
             lastFingerprint = fingerprint;
             changed = true;
-            controller.enqueue(encoder.encode(`event: studio-update\ndata: ${JSON.stringify({ fingerprint, at: Date.now() })}\n\n`));
+            if (!send(`event: studio-update\ndata: ${JSON.stringify({ fingerprint, at: Date.now() })}\n\n`)) return;
           }
         } catch {
-          controller.enqueue(encoder.encode(": keep-alive\n\n"));
+          if (!send(": keep-alive\n\n")) return;
         }
         idleRuns = changed ? 0 : idleRuns + 1;
         const delay = changed ? 750 : Math.min(5_000, 750 * 2 ** Math.min(idleRuns, 3));
@@ -42,7 +54,11 @@ export function GET(request: Request) {
       request.signal.addEventListener("abort", () => {
         closed = true;
         if (timer) clearTimeout(timer);
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // The browser may already have closed the SSE stream.
+        }
       }, { once: true });
     },
     cancel() {

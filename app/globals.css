@@ -385,6 +385,151 @@ input[aria-label="Track position"] {
   }
 }
 
+@media (max-width: 1280px) {
+  .studio-frame {
+    grid-template-columns: 76px minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .studio-sidebar {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .studio-sidebar .brand-mark {
+    height: 42px;
+    width: 42px;
+  }
+
+  .studio-sidebar .brand-mark + span,
+  .studio-nav-label,
+  .studio-sidebar a[href="/settings"] {
+    display: none !important;
+  }
+
+  .studio-nav {
+    margin-top: 22px;
+  }
+
+  .studio-nav a {
+    justify-content: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .studio-topbar {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .new-media-workspace {
+    align-items: stretch !important;
+    padding: 12px !important;
+  }
+
+  .new-media-workspace > div {
+    display: block !important;
+    max-width: none !important;
+    min-height: 0;
+  }
+
+  .new-media-workspace > div > div:last-child {
+    display: none !important;
+  }
+
+  .new-media-panel {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .new-media-hero {
+    min-height: 128px !important;
+    padding: 18px !important;
+  }
+
+  .new-media-hero h1 {
+    font-size: 30px;
+    line-height: 1.05;
+  }
+
+  .new-media-hero p {
+    max-width: 620px;
+    line-height: 1.45;
+  }
+
+  .new-media-panel > div:last-child {
+    min-height: 0;
+    padding: 16px 18px 18px !important;
+  }
+
+  .new-media-panel textarea {
+    min-height: 132px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  main {
+    padding: 8px !important;
+  }
+
+  .studio-frame {
+    height: calc(100vh - 16px) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+  }
+
+  .studio-sidebar {
+    display: none !important;
+  }
+
+  .studio-shell {
+    border-radius: 16px !important;
+  }
+
+  .studio-topbar {
+    height: 54px !important;
+  }
+
+  .studio-topbar > div:first-of-type {
+    min-width: 0;
+  }
+
+  .studio-topbar > div:first-of-type span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .studio-topbar > div:last-child {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 760px), (max-height: 680px) {
+  .new-media-hero {
+    min-height: 94px !important;
+  }
+
+  .new-media-hero h1 {
+    font-size: 26px;
+  }
+
+  .new-media-hero p {
+    display: none;
+  }
+
+  .new-media-panel textarea {
+    min-height: 112px !important;
+  }
+
+  .new-media-panel .glass-control.mt-5 {
+    margin-top: 8px !important;
+  }
+}
+
 @media (max-width: 1023px) and (max-height: 700px) {
   .settings-primary {
     padding: 12px;

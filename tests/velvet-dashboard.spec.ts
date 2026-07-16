@@ -148,6 +148,25 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByText("Hosted studio")).toBeVisible();
   });
 
+  test("keeps the studio readable in a compact window", async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 520 });
+    await page.addInitScript(() => window.localStorage.setItem("velvet-onboarding", "dismissed"));
+    await page.goto("/projects/new");
+
+    const heading = page.getByRole("heading", { name: "Describe the song or album." });
+    await expect(heading).toBeVisible();
+    const headingBox = await heading.boundingBox();
+    expect(headingBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect(headingBox?.y ?? -1).toBeGreaterThanOrEqual(0);
+    await expect(page.getByRole("button", { name: "Create Blueprint" })).toBeVisible();
+
+    const hasPageScroll = await page.evaluate(() => {
+      const root = document.scrollingElement ?? document.documentElement;
+      return root.scrollHeight > root.clientHeight + 1 || root.scrollWidth > root.clientWidth + 1;
+    });
+    expect(hasPageScroll).toBe(false);
+  });
+
   test("advances onboarding after both provider keys validate", async ({ page }) => {
     let setupReady = false;
     await page.route("**/api/setup", async (route) => {
