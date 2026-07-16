@@ -539,7 +539,7 @@ test.describe("Velvet dashboard", () => {
     await page.getByText("Artwork placeholder").click();
     await page.keyboard.press("s");
     await expect(page.getByText("Video/Image lane split. Shortcut: S")).toBeVisible();
-    await expect(page.getByText("Cut 2")).toBeVisible();
+    await expect(page.getByText("Artwork placeholder cut", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save timeline" })).toBeVisible();
   });
 
