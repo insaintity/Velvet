@@ -532,6 +532,8 @@ test.describe("Velvet dashboard", () => {
 
     await expect(page.getByRole("region", { name: "Video timeline" })).toBeVisible();
     await expect(page.getByText("Drop artwork or audio here")).toBeVisible();
+    await expect(page.getByText("Drop artwork or video here")).toBeVisible();
+    await expect(page.getByText("Artwork placeholder")).toHaveCount(0);
     await expect(page.getByText("Drop audio here or push tracks from New Media")).toBeVisible();
     await expect(page.getByText("VIDEO/IMAGE", { exact: true })).toBeVisible();
     await expect(page.getByText("EFFECT", { exact: true })).toBeVisible();
@@ -551,11 +553,9 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
     await page.getByRole("menuitem", { name: "Cut here" }).click();
     await expect(page.getByText("Effect split. Shortcut: S")).toBeVisible();
-    await expect(page.getByRole("button", { name: /25% 50% 75%/ })).toBeVisible();
-    await page.getByText("Artwork placeholder").click();
+    await page.getByText("Drop artwork or video here").click();
     await page.keyboard.press("s");
-    await expect(page.getByText("Video/Image lane split. Shortcut: S")).toBeVisible();
-    await expect(page.locator(".relative.h-full").getByText("Artwork placeholder cut", { exact: true })).toBeVisible();
+    await expect(page.getByText("Add artwork or video before cutting.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Save timeline" })).toBeVisible();
   });
 

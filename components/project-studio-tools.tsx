@@ -154,7 +154,7 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
   const [copiedTrack, setCopiedTrack] = useState<StudioTrack | null>(null);
   const [cropMode, setCropMode] = useState<"fill" | "fit">("fill");
   const [selectedLane, setSelectedLane] = useState<"video" | "effect" | "audio">("audio");
-  const [videoSegments, setVideoSegments] = useState<VideoSegment[]>(() => [{ id: crypto.randomUUID(), label: "Artwork placeholder", duration: 1 }]);
+  const [videoSegments, setVideoSegments] = useState<VideoSegment[]>([]);
   const [effectSegments, setEffectSegments] = useState<EffectSegment[]>(() => [
     { id: crypto.randomUUID(), label: "Grain", setting: "grain", duration: 1 },
     { id: crypto.randomUUID(), label: "Flicker", setting: "flicker", duration: 1 },
@@ -204,6 +204,9 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
     emitToast("Artwork added to the timeline.", "success");
     await onAssetUploaded?.();
     setSettings((current) => ({ ...current, artworkAssetId: data.asset.id }));
+    setVideoSegments((current) => [...current, { id: crypto.randomUUID(), label: data.asset.name ?? "Artwork", duration: 1 }]);
+    setSelectedLane("video");
+    setSelectedVideoIndex(videoSegments.length);
   }
 
   async function importFiles(files: File[]) {
@@ -224,6 +227,9 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
       }));
       setLocalArtworkAssets((current) => [...current, ...assets]);
       setSettings((current) => ({ ...current, artworkAssetId: assets.at(-1)?.id ?? current.artworkAssetId }));
+      setVideoSegments((current) => [...current, ...assets.map((asset) => ({ id: crypto.randomUUID(), label: asset.name, duration: 1 }))]);
+      setSelectedLane("video");
+      setSelectedVideoIndex(videoSegments.length);
     }
     if (audioFiles.length) {
       const importedTracks = await Promise.all(audioFiles.map(async (file) => ({
@@ -282,6 +288,7 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
   const cutActiveTrack = useCallback(() => {
     rememberEdit();
     if (selectedLane === "video") {
+      if (!activeVideo) return emitToast("Add artwork or video before cutting.", "error");
       setVideoSegments((current) => {
         const segment = current[activeVideoIndex];
         if (!segment) return current;
@@ -318,7 +325,7 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
     setOrdered((current) => current.flatMap((track, index) => index === activeTrackIndex ? [{ ...track, durationSeconds: left, title: `${track.title} A` }, { ...track, durationSeconds: right, title: `${track.title} B` }] : [track]));
     setSelectedTrackIndex(activeTrackIndex + 1);
     emitToast("Audio clip split. Shortcut: S", "success");
-  }, [activeEffectIndex, activeTrack, activeTrackIndex, activeVideoIndex, cutFraction, rememberEdit, selectedLane]);
+  }, [activeEffectIndex, activeTrack, activeTrackIndex, activeVideo, activeVideoIndex, cutFraction, rememberEdit, selectedLane]);
   function copyActiveTrack() {
     if (!activeTrack) return emitToast("Add audio before copying.", "error");
     setCopiedTrack(activeTrack);
@@ -347,7 +354,7 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
   }
   const deleteSelected = useCallback(() => {
     if (selectedLane === "video") {
-      if (videoSegments.length <= 1) return emitToast("Keep at least one video/image segment.", "error");
+      if (!videoSegments.length) return emitToast("No video/image segment selected.", "error");
       rememberEdit();
       setVideoSegments((current) => current.filter((_, index) => index !== activeVideoIndex));
       setSelectedVideoIndex(Math.max(0, activeVideoIndex - 1));
@@ -371,6 +378,9 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
     emitToast("Audio clip deleted.", "success");
   }, [activeEffectIndex, activeTrackIndex, activeVideoIndex, effectSegments, ordered.length, rememberEdit, selectedLane, videoSegments.length]);
   function trimSelected(delta: number) {
+    if (selectedLane === "video" && !activeVideo) return emitToast("Add artwork or video before trimming.", "error");
+    if (selectedLane === "effect" && !activeEffect) return emitToast("Add an effect before trimming.", "error");
+    if (selectedLane === "audio" && !activeTrack) return emitToast("Add audio before trimming.", "error");
     rememberEdit();
     if (selectedLane === "video") {
       setVideoSegments((current) => current.map((segment, index) => index === activeVideoIndex ? { ...segment, duration: Math.max(0.2, segment.duration + delta) } : segment));
@@ -519,7 +529,7 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
 
         <section className="relative grid grid-rows-[22px_repeat(3,minmax(0,1fr))] gap-2 rounded-xl bg-[#11101a] p-3 ring-1 ring-inset ring-[var(--border)]">
           <button type="button" onClick={(event) => setPlayheadFraction(pointerFraction(event))} className="relative ml-[112px] rounded bg-black/25 text-left ring-1 ring-inset ring-[var(--border)]"><span className="absolute inset-y-0 w-px bg-[var(--rose-soft)]" style={{ left: `${playheadFraction * 100}%` }} /><span className="grid h-full grid-cols-5 px-2 text-[9px] text-[var(--text-muted)]"><i>0:00</i><i>25%</i><i>50%</i><i>75%</i><i className="text-right">{formatDuration(total)}</i></span></button>
-          <TimelineLane label="VIDEO/IMAGE" icon={<ImageIcon className="h-3 w-3" />}><Reorder.Group axis="x" values={videoSegments} onReorder={(next) => { rememberEdit(); setVideoSegments(next); }} className="flex h-full min-w-0 gap-1">{videoSegments.map((segment, index) => <Reorder.Item value={segment} key={segment.id} onContextMenu={(event: React.MouseEvent<HTMLElement>) => openClipMenu(event, "video", index)} onClick={(event: React.MouseEvent<HTMLElement>) => { setSelectedLane("video"); setSelectedVideoIndex(index); setCutFraction(pointerFraction(event)); }} className={`relative h-full min-w-16 cursor-grab overflow-hidden rounded-md border px-2 text-left active:cursor-grabbing ${selectedLane === "video" && index === activeVideoIndex ? "border-[var(--border-active)] bg-[rgba(190,137,232,.18)]" : "border-[rgba(190,137,232,.26)] bg-[rgba(190,137,232,.11)]"}`} style={{ flexGrow: segment.duration, flexBasis: 0 }}><button type="button" aria-label="Trim video shorter" onClick={(event) => { event.stopPropagation(); trimSelected(-0.15); }} className="absolute bottom-1 left-1 top-1 w-1.5 rounded bg-white/35" /><button type="button" aria-label="Trim video longer" onClick={(event) => { event.stopPropagation(); trimSelected(0.15); }} className="absolute bottom-1 right-1 top-1 w-1.5 rounded bg-white/35" /><div className="truncate pl-2 pr-2 text-[10px] leading-8 text-white">{index === 0 && art?.name ? art.name : segment.label}</div>{selectedLane === "video" && index === activeVideoIndex ? <i className="absolute bottom-0 top-0 w-px bg-white/80" style={{ left: `${cutFraction * 100}%` }} /> : null}</Reorder.Item>)}</Reorder.Group></TimelineLane>
+          <TimelineLane label="VIDEO/IMAGE" icon={<ImageIcon className="h-3 w-3" />}><Reorder.Group axis="x" values={videoSegments} onReorder={(next) => { rememberEdit(); setVideoSegments(next); }} className="flex h-full min-w-0 gap-1">{videoSegments.length ? videoSegments.map((segment, index) => <Reorder.Item value={segment} key={segment.id} onContextMenu={(event: React.MouseEvent<HTMLElement>) => openClipMenu(event, "video", index)} onClick={(event: React.MouseEvent<HTMLElement>) => { setSelectedLane("video"); setSelectedVideoIndex(index); setCutFraction(pointerFraction(event)); }} className={`relative h-full min-w-16 cursor-grab overflow-hidden rounded-md border px-2 text-left active:cursor-grabbing ${selectedLane === "video" && index === activeVideoIndex ? "border-[var(--border-active)] bg-[rgba(190,137,232,.18)]" : "border-[rgba(190,137,232,.26)] bg-[rgba(190,137,232,.11)]"}`} style={{ flexGrow: segment.duration, flexBasis: 0 }}><button type="button" aria-label="Trim video shorter" onClick={(event) => { event.stopPropagation(); trimSelected(-0.15); }} className="absolute bottom-1 left-1 top-1 w-1.5 rounded bg-white/35" /><button type="button" aria-label="Trim video longer" onClick={(event) => { event.stopPropagation(); trimSelected(0.15); }} className="absolute bottom-1 right-1 top-1 w-1.5 rounded bg-white/35" /><div className="truncate pl-2 pr-2 text-[10px] leading-8 text-white">{segment.label}</div>{selectedLane === "video" && index === activeVideoIndex ? <i className="absolute bottom-0 top-0 w-px bg-white/80" style={{ left: `${cutFraction * 100}%` }} /> : null}</Reorder.Item>) : <button type="button" onClick={(event: React.MouseEvent<HTMLElement>) => { setSelectedLane("video"); setCutFraction(pointerFraction(event)); }} className="grid h-full flex-1 place-items-center rounded-md border border-dashed border-[var(--border)] text-[10px] text-[var(--text-muted)]">Drop artwork or video here</button>}</Reorder.Group></TimelineLane>
           <TimelineLane label="EFFECT" icon={<Layers3 className="h-3 w-3" />}><Reorder.Group axis="x" values={effectSegments} onReorder={(next) => { rememberEdit(); setEffectSegments(next); }} className="flex h-full min-w-0 gap-1">{effectSegments.length ? effectSegments.map((effect, index) => <Reorder.Item value={effect} key={effect.id} onContextMenu={(event: React.MouseEvent<HTMLElement>) => openClipMenu(event, "effect", index)} onClick={(event: React.MouseEvent<HTMLElement>) => { setSelectedLane("effect"); setSelectedEffectIndex(index); setCutFraction(pointerFraction(event)); }} className={`relative h-full min-w-20 cursor-grab overflow-hidden rounded-md border pl-5 pr-2 active:cursor-grabbing ${selectedLane === "effect" && index === activeEffectIndex ? "border-[var(--border-active)] bg-[rgba(239,99,152,.16)]" : "border-[rgba(239,99,152,.24)] bg-[rgba(239,99,152,.09)]"}`} style={{ flexGrow: effect.duration, flexBasis: 0 }}><span aria-hidden="true" title="Drag effect" className="absolute bottom-1 left-1 top-1 grid w-3 place-items-center rounded bg-white/[.12] text-[8px] text-white/70">⋮</span><button type="button" aria-label="Trim effect shorter" onClick={(event) => { event.stopPropagation(); trimSelected(-0.15); }} className="absolute bottom-1 left-5 top-1 w-1.5 rounded bg-white/35" /><button type="button" aria-label="Trim effect longer" onClick={(event) => { event.stopPropagation(); trimSelected(0.15); }} className="absolute bottom-1 right-1 top-1 w-1.5 rounded bg-white/35" /><div className="truncate px-2 text-[9px] leading-8 text-[var(--rose-soft)]">{effect.label} {Number(settings[effect.setting] ?? 0)}%</div>{selectedLane === "effect" && index === activeEffectIndex ? <i className="absolute bottom-0 top-0 w-px bg-white/80" style={{ left: `${cutFraction * 100}%` }} /> : null}</Reorder.Item>) : <button type="button" onClick={() => addEffect("grain")} className="grid h-full flex-1 place-items-center rounded-md border border-dashed border-[var(--border)] text-[10px] text-[var(--text-muted)]">Add an effect</button>}</Reorder.Group></TimelineLane>
           <TimelineLane label="AUDIO" icon={<Music2 className="h-3 w-3" />}><Reorder.Group axis="x" values={ordered} onReorder={(next) => { rememberEdit(); setOrdered(next); }} className="flex h-full min-w-0 gap-1">{ordered.length ? ordered.map((track, index) => <Reorder.Item value={track} key={`${track.title}-${index}`} title={`${track.title} - drag to reorder`} onContextMenu={(event: React.MouseEvent<HTMLElement>) => openClipMenu(event, "audio", index)} onClick={(event: React.MouseEvent<HTMLElement>) => { setSelectedLane("audio"); setSelectedTrackIndex(index); setCutFraction(pointerFraction(event)); }} className={`group relative min-w-[52px] cursor-grab overflow-hidden rounded-md border px-2 active:cursor-grabbing ${selectedLane === "audio" && index === activeTrackIndex ? "border-[var(--border-active)] bg-[rgba(88,182,168,.16)]" : "border-[rgba(88,182,168,.28)] bg-[rgba(88,182,168,.1)]"}`} style={{ flexGrow: track.durationSeconds, flexBasis: 0 }}><button type="button" aria-label="Trim audio shorter" onClick={(event) => { event.stopPropagation(); trimSelected(-0.25); }} className="absolute bottom-1 left-1 top-1 w-1.5 rounded bg-white/35" /><button type="button" aria-label="Trim audio longer" onClick={(event) => { event.stopPropagation(); trimSelected(0.25); }} className="absolute bottom-1 right-1 top-1 w-1.5 rounded bg-white/35" /><div className="truncate px-2 text-[9px] leading-8 text-white">{String(index + 1).padStart(2, "0")} {track.title}</div><div className="absolute inset-x-1 bottom-1 flex h-1 items-end gap-px">{[3,7,4,9,5,8,3,6,4,8,5,7].map((height, bar) => <i key={bar} className="flex-1 bg-[rgba(136,222,206,.55)]" style={{ height }} />)}</div>{selectedLane === "audio" && index === activeTrackIndex ? <i className="absolute bottom-0 top-0 w-px bg-white/80" style={{ left: `${cutFraction * 100}%` }} /> : null}</Reorder.Item>) : <button type="button" onClick={(event: React.MouseEvent<HTMLElement>) => { setSelectedLane("audio"); setCutFraction(pointerFraction(event)); }} className="grid h-full flex-1 place-items-center rounded-md border border-dashed border-[var(--border)] text-[10px] text-[var(--text-muted)]">Drop audio here or push tracks from New Media</button>}</Reorder.Group></TimelineLane>
         </section>
