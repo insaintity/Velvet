@@ -139,7 +139,7 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("button", { name: "Album" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Create Blueprint" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Prompt Producer" })).toBeVisible();
-    await expect(page.getByText("Music generation waits for ElevenLabs; publishing waits for YouTube.")).toBeVisible();
+    await expect(page.getByText("publishing is always a separate optional action.")).toBeVisible();
     await expect(page.getByRole("link", { name: "New Media" })).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("link", { name: "Projects" })).not.toHaveAttribute("aria-current", "page");
 
@@ -188,9 +188,9 @@ test.describe("Velvet dashboard", () => {
     await page.getByLabel("ElevenLabs API key").fill("test-elevenlabs");
     await page.getByRole("button", { name: "Save Setup" }).click();
 
-    await expect(page.getByText("ChatGPT and ElevenLabs are connected. Continue with YouTube.")).toBeVisible();
-    await expect(page.locator(".setup-progress-count")).toHaveText(/2\s*\/\s*3/);
-    await expect(page.getByRole("heading", { name: "YouTube" })).toBeVisible();
+    await expect(page.getByText("ChatGPT and ElevenLabs are connected. YouTube is optional for publishing later.")).toBeVisible();
+    await expect(page.locator(".setup-progress-count")).toHaveText(/2\s*\/\s*2/);
+    await expect(page.getByRole("heading", { name: "Database & media" })).toBeVisible();
     await expect(page.getByLabel("AI + Music complete")).toBeVisible();
   });
 
@@ -237,16 +237,6 @@ test.describe("Velvet dashboard", () => {
 
     await dialog.getByLabel("ElevenLabs API key").fill("test-elevenlabs");
     await dialog.getByRole("button", { name: "Save & Continue" }).click();
-    await expect(dialog.getByText("Connect YouTube")).toBeVisible();
-    await expect(dialog.getByLabel("Google OAuth client ID")).toBeVisible();
-    await expect(dialog.getByRole("link", { name: "Open Google OAuth setup" })).toHaveAttribute("href", "https://console.cloud.google.com/apis/credentials");
-    await expect(dialog.getByRole("button", { name: "Log in with YouTube" })).toBeEnabled();
-
-    await dialog.getByLabel("Google OAuth client ID").fill("test.apps.googleusercontent.com");
-    await page.evaluate(() => { window.open = () => null; });
-    await dialog.getByRole("button", { name: "Log in with YouTube" }).click();
-    await expect(dialog.getByText("Finish signing in with your Google account. Velvet will connect automatically.")).toBeVisible();
-    await dialog.getByRole("button", { name: "Finish later in Settings" }).click();
     await expect(dialog).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole("dialog", { name: "Set up your Velvet studio." })).toHaveCount(0);
@@ -301,8 +291,9 @@ test.describe("Velvet dashboard", () => {
     await page.getByTitle("How to get ElevenLabs API key").hover();
     await expect(page.getByRole("link", { name: "Open ElevenLabs API keys" })).toHaveAttribute("href", "https://elevenlabs.io/app/developers/api-keys");
     await expect(page.getByText("open Developers", { exact: false })).toBeVisible();
-    await page.getByRole("button", { name: "02 YouTube" }).click();
-    await expect(page.getByRole("heading", { name: "YouTube" })).toBeVisible();
+    await page.getByRole("button", { name: /02 YouTube/ }).click();
+    await expect(page.getByRole("heading", { name: /YouTube/ })).toBeVisible();
+    await expect(page.getByText("Creating, rendering, and exporting still work without it.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Log in with YouTube" })).toBeEnabled();
     await expect(page.getByLabel("Google OAuth client ID")).toBeVisible();
     await expect(page.getByLabel("Google OAuth client secret")).toBeVisible();
@@ -326,7 +317,7 @@ test.describe("Velvet dashboard", () => {
     await page.goto("/api/youtube/login");
 
     await expect(page).toHaveURL(/\/settings\?youtube=missing_config/);
-    await page.getByRole("button", { name: "02 YouTube" }).click();
+    await page.getByRole("button", { name: /02 YouTube/ }).click();
     await expect(page.getByText("Google sign-in is not configured for this Velvet build.")).toBeVisible();
   });
 

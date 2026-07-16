@@ -51,7 +51,7 @@ export function NewProjectWorkspace() {
             <div className="relative max-w-[620px]">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--rose-soft)]">New media</div>
               <h1 className="mt-2 text-[38px] font-semibold leading-[1.08] text-white">Describe the song or album.</h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">Choose the release type, then write the prompt. Mood, instrumentation, length and intended YouTube style are enough to begin.</p>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">Choose the release type, then write the prompt. Mood, instrumentation, length and release style are enough to begin.</p>
             </div>
           </div>
           <div className="p-6 pt-4">
@@ -78,9 +78,9 @@ export function NewProjectWorkspace() {
           <AnimatePresence mode="wait">
             {promptProducerOpen ? <PromptProducer key="prompt-producer" open mediaType={mediaType} onClose={() => setPromptProducerOpen(false)} onComplete={(prompt, source) => { setBrief(prompt); setMessage(source === "ai" ? "Prompt Producer created this brief with ChatGPT. Review or edit it before continuing." : "Prompt created. Review or edit it before continuing."); }} /> : (
               <motion.div key="new-media-guidance" className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Guidance title="Release type" body="Songs create one-track blueprints. Albums create a multi-track plan with YouTube-ready metadata." />
+                <Guidance title="Release type" body="Songs create one-track blueprints. Albums create a multi-track plan with optional publishing metadata." />
                 <Guidance title="Optional" body="After the prompt, Velvet can ask for length, track count, vocals and workflow mode only if needed." />
-                <Guidance title="Before generation" body="You will review the blueprint first. Music generation waits for ElevenLabs; publishing waits for YouTube." />
+                <Guidance title="Before generation" body="You will review the blueprint first. Music generation waits for ElevenLabs; publishing is always a separate optional action." />
               </motion.div>
             )}
           </AnimatePresence>

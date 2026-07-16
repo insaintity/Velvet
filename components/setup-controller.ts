@@ -21,6 +21,8 @@ export type SetupData = {
 export type SetupOverview = {
   loaded: boolean;
   readyCount: number;
+  requiredReadyCount: number;
+  requiredTotal: number;
   isComplete: boolean;
   canCreate: boolean;
   canGenerate: boolean;
@@ -116,11 +118,14 @@ export function setupOverview(data: SetupData, loaded = true): SetupOverview {
     { label: "ElevenLabs", ready: elevenlabs },
     { label: "YouTube", ready: youtube }
   ];
+  const requiredReadyCount = Number(openai) + Number(elevenlabs);
   return {
     loaded,
     services,
     readyCount: services.filter((service) => service.ready).length,
-    isComplete: services.every((service) => service.ready),
+    requiredReadyCount,
+    requiredTotal: 2,
+    isComplete: openai && elevenlabs,
     canCreate: openai,
     canGenerate: elevenlabs,
     canPublish: youtube

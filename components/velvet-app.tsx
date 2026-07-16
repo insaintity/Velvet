@@ -278,16 +278,16 @@ function Sidebar({ pathname, setup }: { pathname: string; setup: SetupOverview }
       <Link href="/settings" className="hidden rounded-lg border border-[var(--border)] bg-white/[0.025] p-3 transition hover:border-[var(--border-hover)] hover:bg-white/[0.04] lg:block">
         <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
           <span>Studio readiness</span>
-          <span className="tabular text-[var(--text-secondary)]">{setup.readyCount}/3</span>
+          <span className="tabular text-[var(--text-secondary)]">{setup.requiredReadyCount}/{setup.requiredTotal}</span>
         </div>
         <div className="mt-3 h-1 overflow-hidden rounded-full bg-black/30">
           <div
             className="h-full rounded-full bg-[linear-gradient(90deg,var(--violet),var(--rose))] transition-[width] duration-500"
-            style={{ width: `${(setup.readyCount / 3) * 100}%` }}
+            style={{ width: `${(setup.requiredReadyCount / setup.requiredTotal) * 100}%` }}
           />
         </div>
-        <div className="mt-3 flex gap-1.5" aria-label={`${setup.readyCount} of 3 services connected`}>
-          {setup.services.map((service) => (
+        <div className="mt-3 flex gap-1.5" aria-label={`${setup.requiredReadyCount} of ${setup.requiredTotal} required services connected`}>
+          {setup.services.slice(0, 2).map((service) => (
             <span
               key={service.label}
               title={`${service.label}: ${service.ready ? "Connected" : "Not connected"}`}
@@ -1102,7 +1102,7 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
       Boolean(setup.services[2]?.ready)
     ];
     setCompleted(ready);
-    setStep(ready[0] ? (ready[1] ? 2 : 1) : 0);
+    setStep(ready[0] ? 1 : 0);
     fetch("/api/setup", { cache: "no-store" })
       .then((response) => response.json())
       .then((data) => setYoutubeLoginAvailable(Boolean(data.secrets?.youtubeOAuth)))
@@ -1131,8 +1131,12 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
       setCompleted((current) => current.map((value, currentIndex) => currentIndex === index ? true : value) as [boolean, boolean, boolean]);
       if (provider === "openai") setOpenaiKey("");
       else setElevenLabsKey("");
-      setMessage(`${provider === "openai" ? "OpenAI" : "ElevenLabs"} is connected and saved in Settings.`);
-      setStep(index + 1);
+      if (provider === "elevenlabs") {
+        setMessage("OpenAI and ElevenLabs are connected. You can create music now. YouTube is optional for publishing later.");
+      } else {
+        setMessage("OpenAI is connected and saved in Settings.");
+        setStep(1);
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The API key could not be verified.");
     } finally {
@@ -1188,7 +1192,7 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
   const steps = [
     { label: "OpenAI", detail: "Planning and artwork" },
     { label: "ElevenLabs", detail: "Music generation" },
-    { label: "YouTube", detail: "Publishing" }
+    { label: "YouTube", detail: "Optional publishing" }
   ];
 
   return (
@@ -1202,7 +1206,7 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
                 <h2 id="first-run-title" className="mt-1 font-serif text-[30px] leading-tight text-white">Set up your Velvet studio.</h2>
                 <p className="mt-1 text-xs text-[var(--text-muted)]">One guided pass. Everything remains editable in Settings.</p>
               </div>
-              <div className="text-right text-xs text-[var(--text-muted)]"><span className="text-lg font-semibold text-white">{step + 1}</span> / 3</div>
+              <div className="text-right text-xs text-[var(--text-muted)]"><span className="text-lg font-semibold text-white">{completed[0] && completed[1] ? "Ready" : `${step + 1} / 2`}</span></div>
             </header>
 
             <div className="mt-4 grid grid-cols-3 gap-2" aria-label="Onboarding progress">
@@ -1227,7 +1231,7 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center gap-3"><Youtube className="h-5 w-5 text-[#ff4965]" /><div><h3 className="text-base font-medium">Connect YouTube</h3><p className="text-xs text-[var(--text-muted)]">Choose your Google account in the system browser. Velvet never sees your password.</p></div></div>
+                  <div className="flex items-center gap-3"><Youtube className="h-5 w-5 text-[#ff4965]" /><div><h3 className="text-base font-medium">Connect YouTube <span className="text-xs font-normal text-[var(--text-muted)]">(optional)</span></h3><p className="text-xs text-[var(--text-muted)]">Only needed when you want Velvet to publish for you. Nothing uploads automatically.</p></div></div>
                   {completed[2] || youtubeLoginAvailable ? (
                     <div className="mt-4 rounded-lg border border-[var(--border)] bg-black/15 p-4 text-xs leading-5 text-[var(--text-secondary)]">
                       <p>{completed[2] ? "YouTube is already connected." : "Google will ask permission to identify your channel and upload videos. New uploads remain private by default."}</p>
@@ -1249,14 +1253,19 @@ function FirstRunOnboarding({ open, setup, onDismiss }: { open: boolean; setup: 
               )}
             </motion.div>
 
+            {completed[0] && completed[1] ? (
+              <div className="mb-3 rounded-lg border border-[rgba(143,195,177,.22)] bg-[rgba(143,195,177,.075)] px-3 py-2 text-xs leading-5 text-[var(--success)]">
+                Core setup is complete. You can skip YouTube and use Velvet without auto-publishing.
+              </div>
+            ) : null}
             <div className={`rounded-lg border px-3 py-2 text-xs ${message.toLowerCase().includes("could not") || message.toLowerCase().includes("needs") ? "border-[rgba(213,143,154,0.3)] bg-[rgba(213,143,154,0.07)]" : "border-[var(--border)] bg-white/[0.025]"}`} aria-live="polite">{message}</div>
 
             <footer className="mt-4 flex items-center justify-between gap-3">
-              <button type="button" onClick={finishLater} className="h-9 rounded-lg px-3 text-xs text-[var(--text-muted)] hover:bg-white/[0.05] hover:text-white">Finish later in Settings</button>
+              <button type="button" onClick={finishLater} className="h-9 rounded-lg px-3 text-xs text-[var(--text-muted)] hover:bg-white/[0.05] hover:text-white">{completed[0] && completed[1] ? "Skip YouTube" : "Finish later in Settings"}</button>
               <div className="flex items-center gap-2">
                 {step > 0 ? <button type="button" onClick={() => setStep((current) => current - 1)} disabled={busy} className="h-9 rounded-lg border border-[var(--border)] px-4 text-xs text-[var(--text-secondary)] disabled:opacity-40">Back</button> : null}
-                <button type="button" onClick={() => step === 0 ? saveProvider("openai") : step === 1 ? saveProvider("elevenlabs") : connectYouTubeAccount()} disabled={busy} className="glass-primary flex h-9 min-w-36 items-center justify-center gap-2 rounded-lg px-4 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-45">
-                  {busy ? "Checking..." : step === 0 || step === 1 ? (completed[step] ? "Continue" : "Save & Continue") : completed[2] ? "Finish setup" : "Log in with YouTube"}
+                <button type="button" onClick={() => step === 0 ? saveProvider("openai") : step === 1 ? (completed[0] && completed[1] ? onDismiss(true) : saveProvider("elevenlabs")) : connectYouTubeAccount()} disabled={busy} className="glass-primary flex h-9 min-w-36 items-center justify-center gap-2 rounded-lg px-4 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-45">
+                  {busy ? "Checking..." : step === 0 ? (completed[0] ? "Continue" : "Save & Continue") : step === 1 ? (completed[0] && completed[1] ? "Finish setup" : completed[1] ? "Finish setup" : "Save & Continue") : completed[2] ? "Finish setup" : "Log in with YouTube"}
                   {!busy ? <ArrowRight className="h-3.5 w-3.5" /> : null}
                 </button>
               </div>
@@ -1311,7 +1320,7 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
   const elevenLabsReady = providerStatus.elevenlabs?.state === "valid" || setup.services[1]?.ready;
   const aiMusicReady = Boolean(openaiReady && elevenLabsReady);
   const youtubeReady = providerStatus.youtube?.state === "connected" || setup.services[2]?.ready;
-  const onboardingReadyCount = Number(openaiReady) + Number(elevenLabsReady) + Number(youtubeReady);
+  const onboardingReadyCount = Number(openaiReady) + Number(elevenLabsReady);
 
   useEffect(() => {
     const search = new URLSearchParams(window.location.search);
@@ -1396,9 +1405,9 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
         const coreServicesReady = nextStatuses.openai?.state === "valid" && nextStatuses.elevenlabs?.state === "valid";
 
         if (coreServicesReady && activeSetupStep === "services") {
-          setActiveSetupStep("youtube");
+          setActiveSetupStep("review");
           setSetupSaveState("success");
-          setSetupMessage("ChatGPT and ElevenLabs are connected. Continue with YouTube.");
+          setSetupMessage("ChatGPT and ElevenLabs are connected. YouTube is optional for publishing later.");
         } else if (failedServices.length) {
           setSetupSaveState("error");
           setSetupMessage(`${failedServices.join(" and ")} could not be verified. Check the status below and try again.`);
@@ -1486,19 +1495,19 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
         <section className="panel settings-primary rounded-xl p-4">
           <SectionTitle label="Onboarding" />
           <p className="settings-intro mt-2 max-w-3xl text-xs leading-5 text-[var(--text-secondary)]">
-            Connect only what Velvet needs to create and publish: ChatGPT for planning, ElevenLabs for music, and YouTube for private review uploads. Model and format defaults are handled automatically.
+            Connect ChatGPT and ElevenLabs to create music. YouTube is optional and only used when you choose to publish from Velvet. Model and format defaults are handled automatically.
           </p>
 
           <div className="settings-progress mt-3 grid grid-cols-[120px_1fr] gap-3">
             <div className="rounded-xl border border-[var(--border)] bg-white/[0.035] p-3">
               <div className="text-xs text-[var(--text-muted)]">Setup progress</div>
               <div className="setup-progress-count mt-2 whitespace-nowrap text-[28px] font-semibold leading-none tabular-nums tracking-normal text-white">
-                {onboardingReadyCount}<span className="mx-1 text-[var(--text-muted)]">/</span>3
+                {onboardingReadyCount}<span className="mx-1 text-[var(--text-muted)]">/</span>2
               </div>
               <div className="mt-2 h-1.5 rounded-full bg-black/25">
                 <div
                   className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--rose))] transition-[width] duration-500"
-                  style={{ width: `${(onboardingReadyCount / 3) * 100}%` }}
+                  style={{ width: `${(onboardingReadyCount / 2) * 100}%` }}
                 />
               </div>
             </div>
@@ -1508,7 +1517,7 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
                 ["youtube", "02", "YouTube"],
                 ["review", "03", "Advanced"]
               ].map(([key, number, label]) => {
-                const completed = key === "services" ? aiMusicReady : key === "youtube" ? youtubeReady : youtubeReady;
+                const completed = key === "services" ? aiMusicReady : key === "youtube" ? youtubeReady : aiMusicReady;
                 return (
                 <button
                   key={key}
@@ -1519,7 +1528,7 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
                   }`}
                 >
                   <span className="tabular text-[11px] leading-none text-[var(--rose-soft)]">{completed ? <Check className="h-3.5 w-3.5" aria-label={`${label} complete`} /> : number}</span>
-                  <span className="mt-1.5 truncate text-[11px] font-medium leading-none">{label}</span>
+                  <span className="mt-1.5 truncate text-[11px] font-medium leading-none">{label}{key === "youtube" ? " (optional)" : ""}</span>
                 </button>
                 );
               })}
@@ -1592,8 +1601,8 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
               <div className="grid grid-cols-[minmax(0,1fr)_300px] gap-3">
                 <SetupCard
                   icon={<Youtube className="h-5 w-5" />}
-                  title="YouTube"
-                  body="Choose your Google account and approve YouTube access in Google's secure sign-in page."
+                  title="YouTube (optional)"
+                  body="Only connect YouTube if you want Velvet to schedule or upload releases. Creating, rendering, and exporting still work without it."
                   status={formatProviderStatus(providerStatus.youtube, setup.services[2]?.ready)}
                 >
                   <button
@@ -1631,8 +1640,8 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
                   ) : null}
                   <p className="text-xs leading-5 text-[var(--text-muted)]">
                     {youtubeLoginAvailable
-                      ? "Your password is entered only on Google. Velvet stores the resulting refresh token encrypted."
-                      : "Paste the one-time Google client ID, then select Log in with YouTube. Velvet encrypts it and opens Google's account chooser."}
+                      ? "Your password is entered only on Google. Velvet stores the resulting refresh token encrypted. Uploads still require your explicit action."
+                      : "Paste the one-time Google client ID only if you want built-in publishing. Velvet will not auto-upload anything."}
                     {!youtubeLoginAvailable ? (
                       <HelpTooltip
                         label="How to configure Google sign-in"
@@ -1848,7 +1857,7 @@ function NewProjectFlow() {
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--rose-soft)]">New media</div>
           <h1 className="mt-2 text-[38px] font-semibold leading-[1.08] text-white">Describe the song or album.</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-            Choose the release type, then write the prompt. Mood, instrumentation, length and intended YouTube style are enough to begin.
+            Choose the release type, then write the prompt. Mood, instrumentation, length and release style are enough to begin.
           </p>
           <div className="glass-control mt-5 grid h-12 grid-cols-2 rounded-xl p-1">
             {(["song", "album"] as const).map((type) => (
@@ -1916,7 +1925,7 @@ function NewProjectFlow() {
               />
             ) : (
               <motion.div key="new-media-guidance" className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <EmptyPanel title="Release type" body="Songs create one-track blueprints. Albums create a multi-track plan with YouTube-ready metadata." />
+                <EmptyPanel title="Release type" body="Songs create one-track blueprints. Albums create a multi-track plan with optional publishing metadata." />
                 <EmptyPanel title="Optional" body="After the prompt, Velvet can ask for length, track count, vocals and workflow mode only if needed." />
                 <EmptyPanel title="Before generation" body="You will review the blueprint first. ChatGPT and ElevenLabs calls stay blocked until approved." />
               </motion.div>
