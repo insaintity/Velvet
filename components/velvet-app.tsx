@@ -840,6 +840,7 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
       </div>
     );
   }
+  const nextStep = projectNextStep(project, setup);
 
   return (
     <div className={`grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden p-3 lg:p-4 ${focusMode ? "xl:grid-cols-1" : "xl:grid-cols-[236px_minmax(0,1fr)_300px]"}`}>
@@ -873,8 +874,8 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
         <div className="mt-3 grid grid-cols-4 gap-2">
           <WorkflowButton icon={<Check className="h-4 w-4" />} label="Approve" active={busyAction === "approve"} onClick={() => runAction("approve")} disabled={project.status !== "blueprint"} />
           <WorkflowButton icon={<WandSparkles className="h-4 w-4" />} label="Generate" active={busyAction === "music"} onClick={() => runAction("music")} disabled={!setup.canGenerate || !["approved", "generating"].includes(project.status)} />
-          <WorkflowButton icon={<Clapperboard className="h-4 w-4" />} label="Render" active={busyAction === "render"} onClick={() => runAction("render")} disabled={!project.generatedTracks?.length} />
-          <WorkflowButton icon={<Upload className="h-4 w-4" />} label="Upload" active={busyAction === "upload"} onClick={() => runAction("upload")} disabled={!setup.canPublish || !project.render?.videoPath} />
+          <WorkflowButton icon={<Clapperboard className="h-4 w-4" />} label="Render" active={busyAction === "render"} onClick={() => runAction("render")} disabled={!project.generatedTracks?.length || ["rendering", "uploading", "uploaded"].includes(project.status)} />
+          <WorkflowButton icon={<Upload className="h-4 w-4" />} label="Upload" active={busyAction === "upload"} onClick={() => runAction("upload")} disabled={!setup.canPublish || !project.render?.videoPath || ["uploading", "uploaded"].includes(project.status)} />
         </div>
 
         <div className="mt-3 overflow-hidden rounded-lg bg-black/15 ring-1 ring-inset ring-[var(--border)]">
@@ -883,6 +884,27 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
             <span className="tabular text-[var(--text-muted)]">{workflowProgress(project.status)}%</span>
           </div>
           <motion.div className="h-0.5 bg-[linear-gradient(90deg,var(--cyan),var(--violet),var(--rose))]" initial={false} animate={{ width: `${workflowProgress(project.status)}%` }} transition={{ type: "spring", stiffness: 120, damping: 22 }} />
+        </div>
+
+        <div className="mt-3 rounded-xl border border-[var(--border)] bg-white/[0.025] p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--rose-soft)]">Next step</div>
+              <p className="mt-1 truncate text-sm font-medium text-white">{nextStep.title}</p>
+              <p className="mt-1 line-clamp-1 text-xs text-[var(--text-muted)]">{nextStep.body}</p>
+            </div>
+            {nextStep.action ? (
+              <button aria-label="Continue workflow" onClick={() => runAction(nextStep.action!)} disabled={Boolean(nextStep.disabled) || busyAction === nextStep.action} className="glass-primary flex h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40">
+                {busyAction === nextStep.action ? "Working" : nextStep.cta}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <Link aria-label="Continue workflow" href={nextStep.href ?? "/projects/new"} className="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-white/[0.045] px-4 text-xs text-[var(--text-secondary)] hover:bg-white/[0.075] hover:text-white">
+                {nextStep.cta}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            )}
+          </div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4">
@@ -1068,6 +1090,45 @@ function PrivacyMenu({ value, onChange }: { value: "private" | "unlisted" | "pub
       </AnimatePresence>
     </div>
   );
+}
+
+type WorkflowAction = "approve" | "music" | "render" | "upload";
+
+function projectNextStep(project: ClientProject, setup: SetupOverview): { title: string; body: string; cta: string; action?: WorkflowAction; href?: string; disabled?: boolean } {
+  const generatedCount = project.generatedTracks?.length ?? 0;
+  const trackCount = project.blueprint?.tracks.length ?? 0;
+  if (project.status === "blueprint") {
+    return { title: "Approve the blueprint", body: "Review the track prompts and metadata, then approve before any paid music generation.", cta: "Approve", action: "approve" };
+  }
+  if (project.status === "approved") {
+    return setup.canGenerate
+      ? { title: "Generate the music", body: "ElevenLabs will create the approved track prompts. You can review versions before rendering.", cta: "Generate", action: "music" }
+      : { title: "Connect ElevenLabs", body: "Blueprint is approved. Add ElevenLabs in Settings before music generation.", cta: "Settings", href: "/settings" };
+  }
+  if (project.status === "generating") {
+    return { title: "Generation is underway", body: `${generatedCount} of ${trackCount || "the"} tracks are ready. Velvet will update this project as jobs finish.`, cta: "Jobs", href: `/projects/${project.id}` };
+  }
+  if (project.status === "generated") {
+    return { title: "Render the release video", body: "Combine approved audio, artwork, and visual filters into one YouTube-ready MP4.", cta: "Render", action: "render", disabled: generatedCount === 0 };
+  }
+  if (project.status === "rendering") {
+    return { title: "Render is underway", body: "Velvet is preparing the video package. The render and archive links will appear when ready.", cta: "Timeline", href: `/projects/${project.id}/timeline` };
+  }
+  if (project.status === "rendered") {
+    return setup.canPublish
+      ? { title: "Publish or export", body: "The MP4 is ready. Upload to YouTube or download the project archive for manual publishing.", cta: "Upload", action: "upload" }
+      : { title: "Export is ready", body: "YouTube is optional. Download the archive or connect YouTube later for direct upload.", cta: "Archive", href: `/api/projects/${project.id}/archive` };
+  }
+  if (project.status === "uploading") {
+    return { title: "Upload is underway", body: "Velvet is sending the rendered video and metadata to YouTube.", cta: "Publishing", href: "/publishing" };
+  }
+  if (project.status === "uploaded") {
+    return { title: "Release complete", body: "This upload is recorded in History with the prompts, render settings, and result.", cta: "History", href: "/history" };
+  }
+  if (project.status === "failed") {
+    return { title: "Needs attention", body: "Open the job queue for the failure details, then retry the blocked stage.", cta: "Jobs", href: `/projects/${project.id}` };
+  }
+  return { title: "Review the release", body: "Check the track prompts, metadata, artwork direction, and production settings.", cta: "Edit", href: `/projects/${project.id}` };
 }
 
 function workflowProgress(status: string) {

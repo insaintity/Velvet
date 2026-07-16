@@ -9,7 +9,7 @@ import { exportsDir } from "./paths";
 import { generateMusicTrack } from "./providers/elevenlabs";
 import { refreshYouTubeAccessToken, uploadYouTubeVideo } from "./providers/youtube";
 import { readSecret } from "./secrets";
-import type { GeneratedTrack, JobRecord, ProductionSettings } from "./types";
+import type { GeneratedTrack, JobRecord, ProjectRecord, ProductionSettings } from "./types";
 
 const execFileAsync = promisify(execFile);
 const ffmpegBinary = process.env.FFMPEG_PATH || "ffmpeg";
@@ -43,12 +43,20 @@ export async function processJob(job: JobRecord) {
 
     await updateJob(job.id, { status: "blocked", message: `${job.type} jobs are not handled by the worker yet.` });
   } catch (error) {
+    await markProjectFailed(job).catch(() => undefined);
     await updateJob(job.id, {
       status: "failed",
       message: `${job.type} job failed.`,
       error: error instanceof Error ? error.message : "Unknown error"
     });
   }
+}
+
+async function markProjectFailed(job: JobRecord) {
+  if (!job.projectId) return;
+  const database = await readDatabase();
+  database.projects = database.projects.map((project) => (project.id === job.projectId ? { ...project, status: "failed", updatedAt: new Date().toISOString() } : project));
+  await writeDatabase(database);
 }
 
 async function processMusicJob(job: JobRecord) {
@@ -93,18 +101,7 @@ async function processMusicJob(job: JobRecord) {
 
   const latest = await readDatabase();
   latest.projects = latest.projects.map((item) =>
-    item.id === projectId
-      ? {
-          ...item,
-          status: "generating",
-          generatedTracks: project.blueprint!.tracks.flatMap((blueprintTrack) => {
-            const generated = tracks.find((track) => track.title === blueprintTrack.title) ?? item.generatedTracks?.find((track) => track.title === blueprintTrack.title);
-            return generated ? [generated] : [];
-          }),
-          trackVersions: tracks.reduce((versions, track) => ({ ...versions, [track.title]: [...(item.trackVersions?.[track.title] ?? []), track] }), item.trackVersions ?? {}),
-          updatedAt: new Date().toISOString()
-        }
-      : item
+    item.id === projectId ? updateGeneratedProject(item, project.blueprint!.tracks, tracks) : item
   );
   await writeDatabase(latest);
   await addUsage({
@@ -113,7 +110,22 @@ async function processMusicJob(job: JobRecord) {
     operation: "music-generation",
     units: { tracks: tracks.length, seconds: tracks.reduce((sum, track) => sum + track.durationSeconds, 0) }
   });
-  await updateJob(job.id, { status: "completed", message: "Music tracks generated.", result: { tracks } });
+  await updateJob(job.id, { status: "completed", message: tracks.length === 1 ? "Music track generated." : "Music tracks generated.", result: { tracks } });
+}
+
+function updateGeneratedProject(project: ProjectRecord, blueprintTracks: NonNullable<ProjectRecord["blueprint"]>["tracks"], tracks: GeneratedTrack[]) {
+  const generatedTracks = blueprintTracks.flatMap((blueprintTrack) => {
+    const generated = tracks.find((track) => track.title === blueprintTrack.title) ?? project.generatedTracks?.find((track) => track.title === blueprintTrack.title);
+    return generated ? [generated] : [];
+  });
+  const allTracksGenerated = blueprintTracks.length > 0 && generatedTracks.length >= blueprintTracks.length;
+  return {
+    ...project,
+    status: allTracksGenerated ? "generated" as const : "generating" as const,
+    generatedTracks,
+    trackVersions: tracks.reduce((versions, track) => ({ ...versions, [track.title]: [...(project.trackVersions?.[track.title] ?? []), track] }), project.trackVersions ?? {}),
+    updatedAt: new Date().toISOString()
+  };
 }
 
 async function processRenderJob(job: JobRecord) {
@@ -194,7 +206,7 @@ async function processRenderJob(job: JobRecord) {
     item.id === projectId
       ? {
           ...item,
-          status: renderStatus === "rendered" ? "rendered" : item.status,
+          status: renderStatus === "rendered" ? "rendered" : statusAfterBlockedRender(item),
           render: { manifestPath: filePath, manifestStoragePath, videoPath, videoStoragePath, status: renderStatus, message },
           updatedAt: new Date().toISOString()
         }
@@ -211,6 +223,11 @@ async function processRenderJob(job: JobRecord) {
     }
   });
   await updateJob(job.id, { status: renderStatus === "rendered" ? "completed" : "blocked", message, result: { manifestPath: filePath, manifestStoragePath, videoPath, videoStoragePath } });
+}
+
+function statusAfterBlockedRender(project: ProjectRecord): ProjectRecord["status"] {
+  if (project.generatedTracks?.length) return "generated";
+  return project.approvedAt ? "approved" : "blueprint";
 }
 
 async function analyzeSilence(tracks: GeneratedTrack[]) {

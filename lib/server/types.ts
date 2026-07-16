@@ -98,7 +98,7 @@ export type ProjectRecord = {
   title: string;
   brief: string;
   mediaType?: MediaType;
-  status: "blueprint" | "approved" | "generating" | "rendered" | "uploaded" | "failed";
+  status: "blueprint" | "approved" | "generating" | "generated" | "rendering" | "rendered" | "uploading" | "uploaded" | "failed";
   blueprint?: AlbumBlueprint;
   approvedAt?: string;
   generatedTracks?: GeneratedTrack[];

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addJob, readDatabase, updateJob } from "@/lib/server/db";
+import { addJob, readDatabase, updateJob, updateProject } from "@/lib/server/db";
 import { requireSameOrigin } from "@/lib/server/security";
 import { hasSecret } from "@/lib/server/secrets";
 import type { JobRecord } from "@/lib/server/types";
@@ -48,6 +48,7 @@ export async function POST(request: Request) {
   }
   const existingJob = database.jobs.find((job) => job.projectId === projectId && job.type === type && ["queued", "running"].includes(job.status));
   if (existingJob) {
+    await updateProject(projectId, { status: projectStatusForQueuedJob(type) });
     return NextResponse.json({ job: existingJob, message: `${jobLabel(type)} is already ${existingJob.status}.` }, { status: 202 });
   }
 
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
     message: `${jobLabel(type)} queued for the worker.`,
     payload: typeof body.payload === "object" && body.payload ? body.payload : {}
   });
+  await updateProject(projectId, { status: projectStatusForQueuedJob(type) });
 
   return NextResponse.json({ job, message: `${jobLabel(type)} queued. Start the Velvet worker to process it.` }, { status: 202 });
 }
@@ -73,4 +75,13 @@ function jobLabel(type: JobRecord["type"]) {
     render: "Render",
     "youtube-upload": "YouTube upload"
   }[type];
+}
+
+function projectStatusForQueuedJob(type: JobRecord["type"]) {
+  return {
+    blueprint: "blueprint",
+    music: "generating",
+    render: "rendering",
+    "youtube-upload": "uploading"
+  }[type] as "blueprint" | "generating" | "rendering" | "uploading";
 }
