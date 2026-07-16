@@ -35,6 +35,7 @@ export function PrivateStudioLogin() {
       <motion.div className="absolute inset-0" initial={{ scale: 1.025, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}>
         <Image src="/brand/velvet-studio-hero.webp" alt="" fill priority sizes="100vw" className="object-cover object-center" />
       </motion.div>
+      <div className="login-hero-texture pointer-events-none absolute inset-0" />
       <div className="login-hero-shade pointer-events-none absolute inset-0" />
       <motion.section aria-label="Velvet account login" initial={{ opacity: 0, scale: 0.985 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.08, duration: 0.42, ease: [0.22, 1, 0.36, 1] }} className="panel glass-panel-strong relative w-full max-w-[420px] rounded-2xl p-7 shadow-[0_24px_90px_rgba(0,0,0,.38)] backdrop-blur-xl">
         <div className="flex items-center gap-3">

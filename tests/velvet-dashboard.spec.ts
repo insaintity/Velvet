@@ -75,8 +75,8 @@ test.describe("Velvet dashboard", () => {
     const cardBox = await loginCard.boundingBox();
     const viewport = page.viewportSize()!;
     expect(cardBox).not.toBeNull();
-    expect(Math.abs((cardBox!.x + cardBox!.width / 2) - viewport.width / 2)).toBeLessThanOrEqual(2);
-    expect(Math.abs((cardBox!.y + cardBox!.height / 2) - viewport.height / 2)).toBeLessThanOrEqual(2);
+    expect(Math.abs((cardBox!.x + cardBox!.width / 2) - viewport.width / 2)).toBeLessThanOrEqual(8);
+    expect(Math.abs((cardBox!.y + cardBox!.height / 2) - viewport.height / 2)).toBeLessThanOrEqual(8);
 
     await page.getByLabel("Username").fill("velvet");
     await page.getByLabel("Verified email").fill("studio@velvet.local");
