@@ -22,6 +22,12 @@ describe("private studio authentication", () => {
     await expect(passwordMatches("not-the-password")).resolves.toBe(false);
   });
 
+  it("uses Enter as the default studio password", async () => {
+    delete process.env.VELVET_ADMIN_PASSWORD;
+    await expect(passwordMatches("Enter")).resolves.toBe(true);
+    await expect(passwordMatches("enter")).resolves.toBe(false);
+  });
+
   it("verifies active sessions and rejects tampering or expiry", async () => {
     const issuedAt = Date.parse("2026-07-14T00:00:00.000Z");
     const token = await createSessionToken(issuedAt);

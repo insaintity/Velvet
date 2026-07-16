@@ -61,6 +61,23 @@ async function writeFixtureDatabase() {
 }
 
 test.describe("Velvet dashboard", () => {
+  test("centers the private login and accepts the default password", async ({ page }) => {
+    await page.goto("/login");
+    const loginCard = page.getByRole("region", { name: "Private studio login" });
+    await expect(loginCard).toBeVisible();
+    await expect(page.getByPlaceholder("Enter")).toBeVisible();
+
+    const cardBox = await loginCard.boundingBox();
+    const viewport = page.viewportSize()!;
+    expect(cardBox).not.toBeNull();
+    expect(Math.abs((cardBox!.x + cardBox!.width / 2) - viewport.width / 2)).toBeLessThanOrEqual(2);
+    expect(Math.abs((cardBox!.y + cardBox!.height / 2) - viewport.height / 2)).toBeLessThanOrEqual(2);
+
+    await page.getByLabel("Studio password").fill("Enter");
+    await page.getByRole("button", { name: "Enter studio" }).click();
+    await expect(page).toHaveURL(/\/projects\/new$/);
+  });
+
   test("renders the first-launch studio shell", async ({ page }, testInfo) => {
     await page.goto("/dashboard");
 
