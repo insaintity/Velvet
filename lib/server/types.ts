@@ -7,6 +7,14 @@ export type ProviderStatus = {
 };
 
 export type SetupRecord = {
+  auth?: {
+    username: string;
+    email: string;
+    passwordHash: string;
+    passwordSalt: string;
+    createdAt: string;
+    updatedAt: string;
+  };
   openai?: {
     planningModel: string;
     imageModel: string;

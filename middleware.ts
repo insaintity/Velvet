@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { authIsConfigured, authIsRequired, VELVET_SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 
-const PUBLIC_PATHS = new Set(["/login", "/manifest.webmanifest", "/api/auth/login", "/api/health"]);
+const PUBLIC_PATHS = new Set(["/login", "/manifest.webmanifest", "/api/auth/login", "/api/auth/signup", "/api/health"]);
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

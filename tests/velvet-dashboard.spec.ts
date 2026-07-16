@@ -65,6 +65,10 @@ test.describe("Velvet dashboard", () => {
     await page.goto("/login");
     const loginCard = page.getByRole("region", { name: "Velvet account login" });
     await expect(loginCard).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByLabel("Confirm password")).toBeVisible();
+    await loginCard.getByRole("button", { name: "Log in" }).first().click();
     await expect(page.getByPlaceholder("Username")).toBeVisible();
     await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
 
@@ -77,7 +81,7 @@ test.describe("Velvet dashboard", () => {
     await page.getByLabel("Username").fill("velvet");
     await page.getByLabel("Verified email").fill("studio@velvet.local");
     await page.getByLabel("Password").fill("Enter");
-    await page.getByRole("button", { name: "Log in" }).click();
+    await loginCard.locator("form").getByRole("button", { name: "Log in" }).click();
     await expect(page).toHaveURL(/\/projects\/new$/);
   });
 
