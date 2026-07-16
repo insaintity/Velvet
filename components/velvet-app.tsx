@@ -192,6 +192,7 @@ type ClientProject = {
   render?: {
     manifestPath: string;
     videoPath?: string;
+    videoStoragePath?: string;
     status: string;
     message: string;
   };
@@ -907,6 +908,8 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
           </div>
         </div>
 
+        <ExportShelf project={project} setup={setup} onUpload={() => runAction("upload")} uploadBusy={busyAction === "upload"} />
+
         <div className="mt-4 grid grid-cols-1 gap-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3"><SectionTitle label="Tracks & Prompts" icon={<Music2 className="h-4 w-4" />} /><div className="flex items-center gap-1"><button onClick={() => setFocusMode((current) => !current)} title={focusMode ? "Exit focus mode" : "Focus studio"} aria-label={focusMode ? "Exit focus mode" : "Focus studio"} className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-white/[.05] hover:text-white"><Focus className="h-3.5 w-3.5" /></button><Link href={`/projects/${id}/timeline`} title="Open video timeline" aria-label="Open video timeline" className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-white/[.05] hover:text-white"><SlidersHorizontal className="h-3.5 w-3.5" /></Link><button onClick={() => setGenerationOpen(true)} title="Open generation center" aria-label="Open generation center" className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-white/[.05] hover:text-white"><ListRestart className="h-3.5 w-3.5" /></button><span className="ml-1 text-[11px] text-[var(--text-muted)]">{project.generatedTracks?.length ?? 0} generated</span></div></div>
@@ -1092,6 +1095,23 @@ function PrivacyMenu({ value, onChange }: { value: "private" | "unlisted" | "pub
   );
 }
 
+function ExportShelf({ project, setup, onUpload, uploadBusy }: { project: ClientProject; setup: SetupOverview; onUpload: () => void; uploadBusy: boolean }) {
+  const hasVideo = Boolean(project.render?.videoPath || project.render?.videoStoragePath);
+  return (
+    <div className="mt-3 grid grid-cols-1 gap-2 rounded-xl border border-[var(--border)] bg-black/[0.12] p-3 md:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="min-w-0">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Export package</div>
+        <p className="mt-1 truncate text-sm text-white">{hasVideo ? "Rendered MP4 and project archive are ready for manual publishing." : "Render the release to unlock the MP4 export."}</p>
+      </div>
+      <div className="flex min-w-0 items-center gap-2">
+        <a href={`/api/projects/${project.id}/video`} download aria-disabled={!hasVideo} className={`flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium ${hasVideo ? "bg-white/[0.07] text-white hover:bg-white/[0.1]" : "pointer-events-none bg-white/[0.035] text-[var(--text-muted)] opacity-45"}`}><Download className="h-3.5 w-3.5" />Download MP4</a>
+        <a href={`/api/projects/${project.id}/archive`} download className="flex h-9 items-center gap-2 rounded-lg bg-white/[0.045] px-3 text-xs text-[var(--text-secondary)] hover:bg-white/[0.075] hover:text-white"><FileText className="h-3.5 w-3.5" />Download archive</a>
+        {setup.canPublish ? <button onClick={onUpload} disabled={!hasVideo || uploadBusy || ["uploading", "uploaded"].includes(project.status)} className="flex h-9 items-center gap-2 rounded-lg bg-[rgba(226,102,174,.08)] px-3 text-xs text-[var(--rose-soft)] hover:bg-[rgba(226,102,174,.14)] disabled:cursor-not-allowed disabled:opacity-40"><Upload className="h-3.5 w-3.5" />{uploadBusy ? "Uploading" : "YouTube"}</button> : null}
+      </div>
+    </div>
+  );
+}
+
 type WorkflowAction = "approve" | "music" | "render" | "upload";
 
 function projectNextStep(project: ClientProject, setup: SetupOverview): { title: string; body: string; cta: string; action?: WorkflowAction; href?: string; disabled?: boolean } {
@@ -1115,9 +1135,7 @@ function projectNextStep(project: ClientProject, setup: SetupOverview): { title:
     return { title: "Render is underway", body: "Velvet is preparing the video package. The render and archive links will appear when ready.", cta: "Timeline", href: `/projects/${project.id}/timeline` };
   }
   if (project.status === "rendered") {
-    return setup.canPublish
-      ? { title: "Publish or export", body: "The MP4 is ready. Upload to YouTube or download the project archive for manual publishing.", cta: "Upload", action: "upload" }
-      : { title: "Export is ready", body: "YouTube is optional. Download the archive or connect YouTube later for direct upload.", cta: "Archive", href: `/api/projects/${project.id}/archive` };
+    return { title: "Export is ready", body: setup.canPublish ? "Download the MP4 now, or send it to YouTube when you are ready." : "YouTube is optional. Download the MP4 and archive for manual publishing.", cta: "Download MP4", href: `/api/projects/${project.id}/video` };
   }
   if (project.status === "uploading") {
     return { title: "Upload is underway", body: "Velvet is sending the rendered video and metadata to YouTube.", cta: "Publishing", href: "/publishing" };

@@ -431,6 +431,8 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Generate" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Render" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Download MP4" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Download archive" })).toBeVisible();
     await page.getByRole("button", { name: "Edit" }).click();
     await expect(page.getByLabel("YouTube title")).toBeVisible();
     const privacyMenu = page.getByRole("button", { name: "Privacy" });
