@@ -60,6 +60,13 @@ async function writeFixtureDatabase() {
   );
 }
 
+async function writeEmptyDatabase() {
+  const velvetDirectory = path.join(process.cwd(), ".velvet");
+  const databaseFile = path.join(velvetDirectory, "db.json");
+  await mkdir(velvetDirectory, { recursive: true });
+  await writeFile(databaseFile, `${JSON.stringify({ setup: {}, projects: [], prompts: [], jobs: [], uploads: [] }, null, 2)}\n`);
+}
+
 test.describe("Velvet dashboard", () => {
   test("centers the Velvet account login and accepts the default account", async ({ page }) => {
     await page.goto("/login");
@@ -508,6 +515,17 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("region", { name: "Thumbnail editor" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Generate", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Thumbnail Editor" })).toHaveAttribute("aria-current", "page");
+  });
+
+  test("opens the video editor without a project", async ({ page }) => {
+    await writeEmptyDatabase();
+    await page.addInitScript(() => window.localStorage.setItem("velvet-onboarding", "dismissed"));
+    await page.goto("/video-editor");
+
+    await expect(page.getByRole("region", { name: "Video timeline" })).toBeVisible();
+    await expect(page.getByText("Drop artwork or audio here")).toBeVisible();
+    await expect(page.getByText("Drop audio here or push tracks from New Media")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save timeline" })).toBeVisible();
   });
 
   test("keeps primary pages inside the fixed studio frame", async ({ page }) => {

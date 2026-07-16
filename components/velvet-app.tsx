@@ -510,14 +510,17 @@ function VideoEditorWorkspace({ id }: { id?: string }) {
   const { projects, selectedId, setSelectedId, loading } = useToolProjects(id);
 
   if (loading) return <ToolLoading label="Loading video editor" />;
-  if (!projects.length) return <EmptyToolWorkspace title="No projects for the video editor yet" body="Create a song or album blueprint first. The video editor will use that project's tracks, artwork and render settings." />;
 
   return (
     <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-      <ProjectToolSwitcher title="Video Editor" body="Assemble artwork, ordered music, overlays, grain, flicker and render timing." projects={projects} selectedId={selectedId} onSelect={setSelectedId} />
-      {selectedId ? <VideoTimelineWorkspace id={selectedId} /> : null}
+      {projects.length ? <ProjectToolSwitcher title="Video Editor" body="Assemble artwork, ordered music, overlays, grain, flicker and render timing. Use a project timeline or drag files into a blank edit." projects={projects} selectedId={selectedId} onSelect={setSelectedId} /> : null}
+      {selectedId ? <VideoTimelineWorkspace id={selectedId} /> : <BlankVideoEditorWorkspace />}
     </div>
   );
+}
+
+function BlankVideoEditorWorkspace() {
+  return <SequenceDrawer standalone open onClose={() => { window.location.href = "/projects/new"; }} projectTitle="Untitled video edit" tracks={[]} artworkAssets={[]} />;
 }
 
 function VideoTimelineWorkspace({ id }: { id: string }) {

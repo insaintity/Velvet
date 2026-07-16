@@ -26,7 +26,7 @@ export type StudioProduction = {
   vignette?: number;
   dust?: number;
 };
-export type StudioArtwork = { id: string; name: string; kind: "audio" | "artwork"; filePath: string; storagePath?: string; createdAt: string };
+export type StudioArtwork = { id: string; name: string; kind: "audio" | "artwork"; filePath: string; storagePath?: string; previewUrl?: string; createdAt: string };
 const DEFAULT_STUDIO_PRODUCTION: StudioProduction = { gapSeconds: 1.5, fadeSeconds: 0.8, targetLufs: -14, stylePreset: "Studio master", visualPreset: "velvet", filterIntensity: 70, overlayOpacity: 55, grain: 18, flicker: 8, vignette: 28, dust: 5 };
 
 function Drawer({ open, onClose, title, icon, children, width = "max-w-[560px]" }: { open: boolean; onClose: () => void; title: string; icon: React.ReactNode; children: React.ReactNode; width?: string }) {
@@ -140,11 +140,13 @@ export function CreativeVariantsDrawer({ open, onClose, projectId, projectTitle,
   );
 }
 
-export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks, production, artworkAssets, onSave, onAssetUploaded, standalone = false }: { open: boolean; onClose: () => void; projectId: string; projectTitle: string; tracks: StudioTrack[]; production?: StudioProduction; artworkAssets: StudioArtwork[]; onSave: (tracks: StudioTrack[], production: StudioProduction) => Promise<void>; onAssetUploaded: () => Promise<void>; standalone?: boolean }) {
+export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks, production, artworkAssets, onSave, onAssetUploaded, standalone = false }: { open: boolean; onClose: () => void; projectId?: string; projectTitle: string; tracks: StudioTrack[]; production?: StudioProduction; artworkAssets: StudioArtwork[]; onSave?: (tracks: StudioTrack[], production: StudioProduction) => Promise<void>; onAssetUploaded?: () => Promise<void>; standalone?: boolean }) {
   const [ordered, setOrdered] = useState(tracks);
   const [settings, setSettings] = useState<StudioProduction>({ ...DEFAULT_STUDIO_PRODUCTION, ...production });
   const [previewing, setPreviewing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [localArtworkAssets, setLocalArtworkAssets] = useState<StudioArtwork[]>([]);
   const wasOpen = useRef(false);
   useEffect(() => {
     const active = standalone || open;
@@ -155,7 +157,8 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
     wasOpen.current = active;
   }, [open, production, standalone, tracks]);
   const total = ordered.reduce((sum, track) => sum + track.durationSeconds, 0) + Math.max(0, ordered.length - 1) * settings.gapSeconds;
-  const art = artworkAssets.find((asset) => asset.id === settings.artworkAssetId) ?? artworkAssets[0];
+  const effectiveArtworkAssets = projectId ? artworkAssets : localArtworkAssets;
+  const art = effectiveArtworkAssets.find((asset) => asset.id === settings.artworkAssetId) ?? effectiveArtworkAssets[0];
   const overlayStrength = (settings.overlayOpacity ?? 55) / 100;
   const previewStyle = {
     filter: previewFilter(settings.visualPreset ?? "velvet", (settings.filterIntensity ?? 70) / 100),
@@ -167,6 +170,10 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
 
   async function uploadArtwork(file?: File) {
     if (!file) return;
+    if (!projectId) {
+      await importFiles([file]);
+      return;
+    }
     setUploading(true);
     const form = new FormData(); form.set("projectId", projectId); form.set("file", file);
     const response = await fetch("/api/assets", { method: "POST", body: form });
@@ -174,18 +181,66 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
     setUploading(false);
     if (!response.ok) return emitToast(data.error ?? "Artwork upload failed.", "error");
     emitToast("Artwork added to the timeline.", "success");
-    await onAssetUploaded();
+    await onAssetUploaded?.();
     setSettings((current) => ({ ...current, artworkAssetId: data.asset.id }));
   }
 
+  async function importFiles(files: File[]) {
+    if (!files.length) return;
+    setUploading(true);
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    const audioFiles = files.filter((file) => file.type.startsWith("audio/"));
+    if (projectId && imageFiles.length) {
+      for (const image of imageFiles) await uploadArtwork(image);
+    } else if (imageFiles.length) {
+      const assets = imageFiles.map((file) => ({
+        id: crypto.randomUUID(),
+        name: file.name.slice(0, 180),
+        kind: "artwork" as const,
+        filePath: "",
+        previewUrl: URL.createObjectURL(file),
+        createdAt: new Date().toISOString()
+      }));
+      setLocalArtworkAssets((current) => [...current, ...assets]);
+      setSettings((current) => ({ ...current, artworkAssetId: assets.at(-1)?.id ?? current.artworkAssetId }));
+    }
+    if (audioFiles.length) {
+      const importedTracks = await Promise.all(audioFiles.map(async (file) => ({
+        title: file.name.replace(/\.[^.]+$/, "").slice(0, 80) || "Imported audio",
+        durationSeconds: await readAudioDuration(file),
+        prompt: "Imported audio file",
+        mood: "User supplied"
+      })));
+      setOrdered((current) => [...current, ...importedTracks]);
+    }
+    const rejected = files.length - imageFiles.length - audioFiles.length;
+    setUploading(false);
+    if (imageFiles.length || audioFiles.length) emitToast("Media added to the video editor.", "success");
+    if (rejected) emitToast("Use image or audio files in the video editor.", "error");
+  }
+
+  async function saveTimeline() {
+    const nextProduction = { ...settings, artworkAssetId: art?.id };
+    if (onSave) return onSave(ordered, nextProduction);
+    window.localStorage.setItem("velvet:video-editor-draft", JSON.stringify({ tracks: ordered, production: nextProduction, artwork: localArtworkAssets.map((asset) => ({ id: asset.id, name: asset.name, kind: asset.kind, filePath: asset.filePath, storagePath: asset.storagePath, createdAt: asset.createdAt })), updatedAt: new Date().toISOString() }));
+    emitToast("Video editor draft saved on this device.", "success");
+  }
+
   const editor = (
-      <div className="grid h-full grid-rows-[minmax(0,1fr)_164px_48px] gap-3 pt-3">
+      <div
+        className={`grid h-full grid-rows-[minmax(0,1fr)_164px_48px] gap-3 pt-3 ${dragging ? "rounded-xl ring-2 ring-[var(--border-active)]" : ""}`}
+        onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
+        onDragOver={(event) => event.preventDefault()}
+        onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
+        onDrop={(event) => { event.preventDefault(); setDragging(false); importFiles(Array.from(event.dataTransfer.files)).catch(() => emitToast("Media could not be imported.", "error")); }}
+      >
         <div className="grid min-h-0 grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)] gap-3">
           <section className="grid min-h-0 grid-rows-[minmax(0,1fr)_42px] overflow-hidden rounded-xl bg-black/30 ring-1 ring-inset ring-[var(--border)]">
             <div className="video-preview relative isolate min-h-0 overflow-hidden bg-[#090a10]" style={previewStyle}>
-              {art ? <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(/api/assets?projectId=${encodeURIComponent(projectId)}&assetId=${encodeURIComponent(art.id)})` }} /> : <div className="absolute inset-0 grid place-items-center"><div className="text-center"><ImageIcon className="mx-auto h-7 w-7 text-[var(--text-muted)]" /><div className="mt-3 font-serif text-3xl text-white">{projectTitle}</div><div className="mt-1 text-[10px] uppercase tracking-[.16em] text-[var(--text-muted)]">Add artwork to begin</div></div></div>}
+              {art ? <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${art.previewUrl ?? `/api/assets?projectId=${encodeURIComponent(projectId ?? "")}&assetId=${encodeURIComponent(art.id)}`})` }} /> : <div className="absolute inset-0 grid place-items-center"><div className="text-center"><ImageIcon className="mx-auto h-7 w-7 text-[var(--text-muted)]" /><div className="mt-3 font-serif text-3xl text-white">{projectTitle}</div><div className="mt-1 text-[10px] uppercase tracking-[.16em] text-[var(--text-muted)]">Drop artwork or audio here</div></div></div>}
               <div className="video-grain absolute inset-0" /><div className="video-flicker absolute inset-0" /><div className="video-vignette absolute inset-0" /><div className="video-dust absolute inset-0" />
               <motion.div className="absolute bottom-0 top-0 z-20 w-px bg-white/80 shadow-[0_0_8px_rgba(255,255,255,.7)]" initial={false} animate={{ left: previewing ? ["0%", "100%"] : "0%" }} transition={previewing ? { duration: 8, ease: "linear", repeat: Infinity } : { duration: 0.2 }} />
+              {dragging ? <div className="absolute inset-0 z-30 grid place-items-center bg-black/55 backdrop-blur-sm"><div className="rounded-xl border border-[var(--border-active)] bg-[#211a2b]/95 px-5 py-4 text-center"><Upload className="mx-auto h-5 w-5 text-[var(--rose-soft)]" /><div className="mt-2 text-sm font-medium text-white">Drop media into timeline</div><div className="mt-1 text-xs text-[var(--text-muted)]">Images become visuals. Audio becomes music clips.</div></div></div> : null}
             </div>
             <div className="flex items-center justify-between border-t border-[var(--border)] px-3">
               <button onClick={() => setPreviewing((current) => !current)} className="flex h-8 items-center gap-2 rounded-lg bg-white/[.06] px-3 text-xs text-white">{previewing ? <Pause className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}{previewing ? "Pause preview" : "Preview motion"}</button>
@@ -195,8 +250,8 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
 
           <section className="grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-3 rounded-xl bg-[#1a1725] p-3 ring-1 ring-inset ring-[var(--border)]">
             <div>
-              <div className="flex items-center justify-between"><span className="text-[10px] font-semibold uppercase tracking-[.13em] text-[var(--rose-soft)]">Artwork</span><label title="Upload artwork" className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md bg-white/[.05] px-2 text-[10px] hover:bg-white/[.08]">{uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}Add<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadArtwork(event.target.files?.[0])} /></label></div>
-              <div className="mt-2 grid grid-cols-3 gap-1.5">{artworkAssets.slice(0, 3).map((asset) => <button key={asset.id} title={asset.name} onClick={() => setSettings({ ...settings, artworkAssetId: asset.id })} className={`h-9 truncate rounded-lg px-2 text-[10px] ${art?.id === asset.id ? "bg-[rgba(239,99,152,.15)] text-white ring-1 ring-inset ring-[var(--border-active)]" : "bg-black/20 text-[var(--text-muted)]"}`}>{asset.name}</button>)}{!artworkAssets.length ? <div className="col-span-3 grid h-9 place-items-center rounded-lg bg-black/20 text-[10px] text-[var(--text-muted)]">No artwork uploaded</div> : null}</div>
+              <div className="flex items-center justify-between"><span className="text-[10px] font-semibold uppercase tracking-[.13em] text-[var(--rose-soft)]">Media</span><label title="Upload media" className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md bg-white/[.05] px-2 text-[10px] hover:bg-white/[.08]">{uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}Add<input type="file" accept="image/*,audio/*" multiple className="hidden" onChange={(event) => importFiles(Array.from(event.target.files ?? [])).catch(() => emitToast("Media could not be imported.", "error"))} /></label></div>
+              <div className="mt-2 grid grid-cols-3 gap-1.5">{effectiveArtworkAssets.slice(0, 3).map((asset) => <button key={asset.id} title={asset.name} onClick={() => setSettings({ ...settings, artworkAssetId: asset.id })} className={`h-9 truncate rounded-lg px-2 text-[10px] ${art?.id === asset.id ? "bg-[rgba(239,99,152,.15)] text-white ring-1 ring-inset ring-[var(--border-active)]" : "bg-black/20 text-[var(--text-muted)]"}`}>{asset.name}</button>)}{!effectiveArtworkAssets.length ? <div className="col-span-3 grid h-9 place-items-center rounded-lg bg-black/20 text-[10px] text-[var(--text-muted)]">Drop or add artwork</div> : null}</div>
             </div>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[.13em] text-[var(--rose-soft)]">Velvet looks</div>
@@ -212,11 +267,11 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
 
         <section className="relative grid grid-rows-3 gap-2 rounded-xl bg-[#11101a] p-3 ring-1 ring-inset ring-[var(--border)]">
           <TimelineLane label="VISUAL" icon={<ImageIcon className="h-3 w-3" />}><div className="h-full rounded-md border border-[rgba(190,137,232,.26)] bg-[rgba(190,137,232,.11)] px-3 text-[10px] leading-8 text-white">{art?.name ?? "Artwork placeholder"}</div></TimelineLane>
-          <TimelineLane label="MUSIC" icon={<Music2 className="h-3 w-3" />}><Reorder.Group axis="x" values={ordered} onReorder={setOrdered} className="flex h-full min-w-0 gap-1">{ordered.map((track, index) => <Reorder.Item value={track} key={track.title} title={`${track.title} · drag to reorder`} className="group relative min-w-[52px] cursor-grab overflow-hidden rounded-md border border-[rgba(88,182,168,.28)] bg-[rgba(88,182,168,.1)] px-2 active:cursor-grabbing" style={{ flexGrow: track.durationSeconds, flexBasis: 0 }}><div className="truncate text-[9px] leading-8 text-white">{String(index + 1).padStart(2, "0")} {track.title}</div><div className="absolute inset-x-1 bottom-1 flex h-1 items-end gap-px">{[3,7,4,9,5,8,3,6,4,8,5,7].map((height, bar) => <i key={bar} className="flex-1 bg-[rgba(136,222,206,.55)]" style={{ height }} />)}</div></Reorder.Item>)}</Reorder.Group></TimelineLane>
+          <TimelineLane label="MUSIC" icon={<Music2 className="h-3 w-3" />}><Reorder.Group axis="x" values={ordered} onReorder={setOrdered} className="flex h-full min-w-0 gap-1">{ordered.length ? ordered.map((track, index) => <Reorder.Item value={track} key={`${track.title}-${index}`} title={`${track.title} - drag to reorder`} className="group relative min-w-[52px] cursor-grab overflow-hidden rounded-md border border-[rgba(88,182,168,.28)] bg-[rgba(88,182,168,.1)] px-2 active:cursor-grabbing" style={{ flexGrow: track.durationSeconds, flexBasis: 0 }}><div className="truncate text-[9px] leading-8 text-white">{String(index + 1).padStart(2, "0")} {track.title}</div><div className="absolute inset-x-1 bottom-1 flex h-1 items-end gap-px">{[3,7,4,9,5,8,3,6,4,8,5,7].map((height, bar) => <i key={bar} className="flex-1 bg-[rgba(136,222,206,.55)]" style={{ height }} />)}</div></Reorder.Item>) : <div className="grid h-full flex-1 place-items-center rounded-md border border-dashed border-[var(--border)] text-[10px] text-[var(--text-muted)]">Drop audio here or push tracks from New Media</div>}</Reorder.Group></TimelineLane>
           <TimelineLane label="FX" icon={<Layers3 className="h-3 w-3" />}><div className="flex h-full gap-1">{[["Grain", settings.grain], ["Flicker", settings.flicker], ["Vignette", settings.vignette], ["Dust", settings.dust]].filter(([, value]) => Number(value) > 0).map(([label, value]) => <div key={String(label)} className="h-full min-w-20 flex-1 rounded-md border border-[rgba(239,99,152,.24)] bg-[rgba(239,99,152,.09)] px-2 text-[9px] leading-8 text-[var(--rose-soft)]">{label} {value}%</div>)}</div></TimelineLane>
         </section>
 
-        <div className="grid grid-cols-[auto_auto_auto_minmax(180px,1fr)_auto] items-end gap-3"><CompactNumber label="Gap" value={settings.gapSeconds} min={0} max={10} step={0.5} suffix="s" onChange={(gapSeconds) => setSettings({ ...settings, gapSeconds })} /><CompactNumber label="Fade" value={settings.fadeSeconds} min={0} max={5} step={0.1} suffix="s" onChange={(fadeSeconds) => setSettings({ ...settings, fadeSeconds })} /><CompactNumber label="Loudness" value={settings.targetLufs} min={-24} max={-8} step={1} suffix=" LUFS" onChange={(targetLufs) => setSettings({ ...settings, targetLufs })} /><label className="text-[9px] uppercase tracking-[.12em] text-[var(--text-muted)]">Schedule publish<input type="datetime-local" value={settings.scheduledPublishAt?.slice(0, 16) ?? ""} onChange={(event) => setSettings({ ...settings, scheduledPublishAt: event.target.value ? new Date(event.target.value).toISOString() : undefined })} className="mt-1 h-8 w-full rounded-lg bg-black/20 px-3 text-xs normal-case text-white ring-1 ring-inset ring-[var(--border)]" /></label><button onClick={() => onSave(ordered, { ...settings, artworkAssetId: art?.id })} className="h-10 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 text-sm font-medium">Save timeline</button></div>
+        <div className="grid grid-cols-[auto_auto_auto_minmax(180px,1fr)_auto] items-end gap-3"><CompactNumber label="Gap" value={settings.gapSeconds} min={0} max={10} step={0.5} suffix="s" onChange={(gapSeconds) => setSettings({ ...settings, gapSeconds })} /><CompactNumber label="Fade" value={settings.fadeSeconds} min={0} max={5} step={0.1} suffix="s" onChange={(fadeSeconds) => setSettings({ ...settings, fadeSeconds })} /><CompactNumber label="Loudness" value={settings.targetLufs} min={-24} max={-8} step={1} suffix=" LUFS" onChange={(targetLufs) => setSettings({ ...settings, targetLufs })} /><label className="text-[9px] uppercase tracking-[.12em] text-[var(--text-muted)]">Schedule publish<input type="datetime-local" value={settings.scheduledPublishAt?.slice(0, 16) ?? ""} onChange={(event) => setSettings({ ...settings, scheduledPublishAt: event.target.value ? new Date(event.target.value).toISOString() : undefined })} className="mt-1 h-8 w-full rounded-lg bg-black/20 px-3 text-xs normal-case text-white ring-1 ring-inset ring-[var(--border)]" /></label><button onClick={saveTimeline} className="h-10 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 text-sm font-medium">Save timeline</button></div>
       </div>
   );
 
@@ -243,6 +298,26 @@ function previewFilter(preset: NonNullable<StudioProduction["visualPreset"]>, in
   if (preset === "rose-film") return `sepia(${amount * 0.18}) saturate(${1 - amount * 0.08}) contrast(${1 + amount * 0.09}) hue-rotate(${-amount * 8}deg)`;
   if (preset === "midnight") return `saturate(${1 - amount * 0.18}) contrast(${1 + amount * 0.18}) brightness(${1 - amount * 0.07}) hue-rotate(${amount * 12}deg)`;
   return `saturate(${1 + amount * 0.12}) contrast(${1 + amount * 0.12}) brightness(${1 - amount * 0.03}) hue-rotate(${amount * 4}deg)`;
+}
+
+function readAudioDuration(file: File) {
+  return new Promise<number>((resolve) => {
+    const url = URL.createObjectURL(file);
+    const audio = new Audio(url);
+    const finish = (seconds = 180) => {
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds) : 180);
+    };
+    const timeout = window.setTimeout(() => finish(), 1200);
+    audio.addEventListener("loadedmetadata", () => {
+      window.clearTimeout(timeout);
+      finish(audio.duration);
+    }, { once: true });
+    audio.addEventListener("error", () => {
+      window.clearTimeout(timeout);
+      finish();
+    }, { once: true });
+  });
 }
 
 function CompactNumber({ label, value, min, max, step, suffix, onChange }: { label: string; value: number; min: number; max: number; step: number; suffix: string; onChange: (value: number) => void }) {
