@@ -494,6 +494,10 @@ test.describe("Velvet dashboard", () => {
     await expect(page).toHaveURL(new RegExp(`/projects/${fixtureProjectId}/timeline$`));
     await expect(page.getByRole("region", { name: "Video timeline" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save timeline" })).toBeVisible();
+    await expect(page.getByText("VIDEO/IMAGE", { exact: true })).toBeVisible();
+    await expect(page.getByText("EFFECT", { exact: true })).toBeVisible();
+    await expect(page.getByText("AUDIO", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cut" })).toBeVisible();
     const transparency = page.getByRole("slider", { name: "Transparency" });
     await expect(transparency).toBeVisible();
     await expect(page.getByRole("button", { name: "velvet" })).toBeVisible();
@@ -525,6 +529,11 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("region", { name: "Video timeline" })).toBeVisible();
     await expect(page.getByText("Drop artwork or audio here")).toBeVisible();
     await expect(page.getByText("Drop audio here or push tracks from New Media")).toBeVisible();
+    await expect(page.getByText("VIDEO/IMAGE", { exact: true })).toBeVisible();
+    await expect(page.getByText("EFFECT", { exact: true })).toBeVisible();
+    await expect(page.getByText("AUDIO", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Fit crop" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Remove audio" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save timeline" })).toBeVisible();
   });
 

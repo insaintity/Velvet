@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Activity, ArrowLeft, Check, Clock3, Download, Eye, FileAudio, ImageIcon, Layers3, Loader2, Music2, Pause, Play, RefreshCw, RotateCcw, Sparkles, Upload, X } from "lucide-react";
+import { Activity, ArrowLeft, Check, Clipboard, Clock3, Copy, Crop, Download, Eye, FileAudio, ImageIcon, Layers3, Loader2, Music2, Pause, Play, RefreshCw, RotateCcw, Scissors, Sparkles, Upload, VolumeX, X } from "lucide-react";
 import { AnimatePresence, motion, Reorder } from "framer-motion";
 import { StatusPill, Waveform } from "@/components/studio-chrome";
 import { formatDuration } from "@/lib/time";
@@ -147,6 +147,9 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [localArtworkAssets, setLocalArtworkAssets] = useState<StudioArtwork[]>([]);
+  const [selectedTrackIndex, setSelectedTrackIndex] = useState(0);
+  const [copiedTrack, setCopiedTrack] = useState<StudioTrack | null>(null);
+  const [cropMode, setCropMode] = useState<"fill" | "fit">("fill");
   const wasOpen = useRef(false);
   useEffect(() => {
     const active = standalone || open;
@@ -226,18 +229,49 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
     emitToast("Video editor draft saved on this device.", "success");
   }
 
+  const activeTrackIndex = Math.min(Math.max(0, selectedTrackIndex), Math.max(0, ordered.length - 1));
+  const activeTrack = ordered[activeTrackIndex];
+  function cutActiveTrack() {
+    if (!activeTrack) return emitToast("Add audio before cutting.", "error");
+    setOrdered((current) => current.map((track, index) => index === activeTrackIndex ? { ...track, durationSeconds: Math.max(5, Math.round(track.durationSeconds / 2)) } : track));
+    emitToast("Selected audio clip cut shorter.", "success");
+  }
+  function copyActiveTrack() {
+    if (!activeTrack) return emitToast("Add audio before copying.", "error");
+    setCopiedTrack(activeTrack);
+    emitToast("Audio clip copied.", "success");
+  }
+  function pasteCopiedTrack() {
+    if (!copiedTrack) return emitToast("Copy an audio clip first.", "error");
+    setOrdered((current) => [...current, { ...copiedTrack, title: `${copiedTrack.title} copy` }]);
+    setSelectedTrackIndex(ordered.length);
+    emitToast("Audio clip pasted.", "success");
+  }
+  function reverseAudio() {
+    if (ordered.length < 2) return emitToast("Add at least two audio clips to reverse.", "error");
+    setOrdered((current) => [...current].reverse());
+    setSelectedTrackIndex(0);
+    emitToast("Audio order reversed.", "success");
+  }
+  function removeAudio() {
+    if (!ordered.length) return emitToast("No audio clips to remove.", "error");
+    setOrdered([]);
+    setSelectedTrackIndex(0);
+    emitToast("Audio lane cleared.", "success");
+  }
+
   const editor = (
       <div
-        className={`grid h-full grid-rows-[minmax(0,1fr)_164px_48px] gap-3 pt-3 ${dragging ? "rounded-xl ring-2 ring-[var(--border-active)]" : ""}`}
+        className={`grid h-full grid-rows-[minmax(320px,1fr)_36px_186px_48px] gap-3 pt-3 ${dragging ? "rounded-xl ring-2 ring-[var(--border-active)]" : ""}`}
         onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
         onDragOver={(event) => event.preventDefault()}
         onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
         onDrop={(event) => { event.preventDefault(); setDragging(false); importFiles(Array.from(event.dataTransfer.files)).catch(() => emitToast("Media could not be imported.", "error")); }}
       >
-        <div className="grid min-h-0 grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)] gap-3">
+        <div className="grid min-h-0 grid-cols-[minmax(0,2.25fr)_minmax(360px,.75fr)] gap-3">
           <section className="grid min-h-0 grid-rows-[minmax(0,1fr)_42px] overflow-hidden rounded-xl bg-black/30 ring-1 ring-inset ring-[var(--border)]">
             <div className="video-preview relative isolate min-h-0 overflow-hidden bg-[#090a10]" style={previewStyle}>
-              {art ? <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${art.previewUrl ?? `/api/assets?projectId=${encodeURIComponent(projectId ?? "")}&assetId=${encodeURIComponent(art.id)}`})` }} /> : <div className="absolute inset-0 grid place-items-center"><div className="text-center"><ImageIcon className="mx-auto h-7 w-7 text-[var(--text-muted)]" /><div className="mt-3 font-serif text-3xl text-white">{projectTitle}</div><div className="mt-1 text-[10px] uppercase tracking-[.16em] text-[var(--text-muted)]">Drop artwork or audio here</div></div></div>}
+              {art ? <div className="absolute inset-0 bg-center bg-no-repeat" style={{ backgroundImage: `url(${art.previewUrl ?? `/api/assets?projectId=${encodeURIComponent(projectId ?? "")}&assetId=${encodeURIComponent(art.id)}`})`, backgroundSize: cropMode === "fill" ? "cover" : "contain" }} /> : <div className="absolute inset-0 grid place-items-center"><div className="text-center"><ImageIcon className="mx-auto h-7 w-7 text-[var(--text-muted)]" /><div className="mt-3 font-serif text-4xl text-white">{projectTitle}</div><div className="mt-2 text-[10px] uppercase tracking-[.16em] text-[var(--text-muted)]">Drop artwork or audio here</div></div></div>}
               <div className="video-grain absolute inset-0" /><div className="video-flicker absolute inset-0" /><div className="video-vignette absolute inset-0" /><div className="video-dust absolute inset-0" />
               <motion.div className="absolute bottom-0 top-0 z-20 w-px bg-white/80 shadow-[0_0_8px_rgba(255,255,255,.7)]" initial={false} animate={{ left: previewing ? ["0%", "100%"] : "0%" }} transition={previewing ? { duration: 8, ease: "linear", repeat: Infinity } : { duration: 0.2 }} />
               {dragging ? <div className="absolute inset-0 z-30 grid place-items-center bg-black/55 backdrop-blur-sm"><div className="rounded-xl border border-[var(--border-active)] bg-[#211a2b]/95 px-5 py-4 text-center"><Upload className="mx-auto h-5 w-5 text-[var(--rose-soft)]" /><div className="mt-2 text-sm font-medium text-white">Drop media into timeline</div><div className="mt-1 text-xs text-[var(--text-muted)]">Images become visuals. Audio becomes music clips.</div></div></div> : null}
@@ -265,10 +299,20 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
           </section>
         </div>
 
+        <div className="flex items-center gap-2 rounded-xl bg-black/20 px-3 ring-1 ring-inset ring-[var(--border)]">
+          <EditorTool icon={<Crop className="h-3.5 w-3.5" />} label={cropMode === "fill" ? "Fit crop" : "Fill crop"} onClick={() => { setCropMode((mode) => mode === "fill" ? "fit" : "fill"); emitToast(cropMode === "fill" ? "Preview set to fit." : "Preview set to fill.", "success"); }} />
+          <EditorTool icon={<Scissors className="h-3.5 w-3.5" />} label="Cut" onClick={cutActiveTrack} />
+          <EditorTool icon={<Copy className="h-3.5 w-3.5" />} label="Copy" onClick={copyActiveTrack} />
+          <EditorTool icon={<Clipboard className="h-3.5 w-3.5" />} label="Paste" onClick={pasteCopiedTrack} />
+          <EditorTool icon={<RotateCcw className="h-3.5 w-3.5" />} label="Reverse" onClick={reverseAudio} />
+          <EditorTool icon={<VolumeX className="h-3.5 w-3.5" />} label="Remove audio" onClick={removeAudio} danger />
+          <div className="ml-auto truncate text-[10px] uppercase tracking-[.12em] text-[var(--text-muted)]">{activeTrack ? `Selected: ${activeTrack.title}` : "No audio selected"}</div>
+        </div>
+
         <section className="relative grid grid-rows-3 gap-2 rounded-xl bg-[#11101a] p-3 ring-1 ring-inset ring-[var(--border)]">
-          <TimelineLane label="VISUAL" icon={<ImageIcon className="h-3 w-3" />}><div className="h-full rounded-md border border-[rgba(190,137,232,.26)] bg-[rgba(190,137,232,.11)] px-3 text-[10px] leading-8 text-white">{art?.name ?? "Artwork placeholder"}</div></TimelineLane>
-          <TimelineLane label="MUSIC" icon={<Music2 className="h-3 w-3" />}><Reorder.Group axis="x" values={ordered} onReorder={setOrdered} className="flex h-full min-w-0 gap-1">{ordered.length ? ordered.map((track, index) => <Reorder.Item value={track} key={`${track.title}-${index}`} title={`${track.title} - drag to reorder`} className="group relative min-w-[52px] cursor-grab overflow-hidden rounded-md border border-[rgba(88,182,168,.28)] bg-[rgba(88,182,168,.1)] px-2 active:cursor-grabbing" style={{ flexGrow: track.durationSeconds, flexBasis: 0 }}><div className="truncate text-[9px] leading-8 text-white">{String(index + 1).padStart(2, "0")} {track.title}</div><div className="absolute inset-x-1 bottom-1 flex h-1 items-end gap-px">{[3,7,4,9,5,8,3,6,4,8,5,7].map((height, bar) => <i key={bar} className="flex-1 bg-[rgba(136,222,206,.55)]" style={{ height }} />)}</div></Reorder.Item>) : <div className="grid h-full flex-1 place-items-center rounded-md border border-dashed border-[var(--border)] text-[10px] text-[var(--text-muted)]">Drop audio here or push tracks from New Media</div>}</Reorder.Group></TimelineLane>
-          <TimelineLane label="FX" icon={<Layers3 className="h-3 w-3" />}><div className="flex h-full gap-1">{[["Grain", settings.grain], ["Flicker", settings.flicker], ["Vignette", settings.vignette], ["Dust", settings.dust]].filter(([, value]) => Number(value) > 0).map(([label, value]) => <div key={String(label)} className="h-full min-w-20 flex-1 rounded-md border border-[rgba(239,99,152,.24)] bg-[rgba(239,99,152,.09)] px-2 text-[9px] leading-8 text-[var(--rose-soft)]">{label} {value}%</div>)}</div></TimelineLane>
+          <TimelineLane label="VIDEO/IMAGE" icon={<ImageIcon className="h-3 w-3" />}><div className="h-full rounded-md border border-[rgba(190,137,232,.26)] bg-[rgba(190,137,232,.11)] px-3 text-[10px] leading-8 text-white">{art?.name ?? "Artwork placeholder"}</div></TimelineLane>
+          <TimelineLane label="EFFECT" icon={<Layers3 className="h-3 w-3" />}><div className="flex h-full gap-1">{[["Grain", settings.grain], ["Flicker", settings.flicker], ["Vignette", settings.vignette], ["Dust", settings.dust]].filter(([, value]) => Number(value) > 0).map(([label, value]) => <div key={String(label)} className="h-full min-w-20 flex-1 rounded-md border border-[rgba(239,99,152,.24)] bg-[rgba(239,99,152,.09)] px-2 text-[9px] leading-8 text-[var(--rose-soft)]">{label} {value}%</div>)}</div></TimelineLane>
+          <TimelineLane label="AUDIO" icon={<Music2 className="h-3 w-3" />}><Reorder.Group axis="x" values={ordered} onReorder={setOrdered} className="flex h-full min-w-0 gap-1">{ordered.length ? ordered.map((track, index) => <Reorder.Item value={track} key={`${track.title}-${index}`} title={`${track.title} - drag to reorder`} onClick={() => setSelectedTrackIndex(index)} className={`group relative min-w-[52px] cursor-grab overflow-hidden rounded-md border px-2 active:cursor-grabbing ${index === activeTrackIndex ? "border-[var(--border-active)] bg-[rgba(88,182,168,.16)]" : "border-[rgba(88,182,168,.28)] bg-[rgba(88,182,168,.1)]"}`} style={{ flexGrow: track.durationSeconds, flexBasis: 0 }}><div className="truncate text-[9px] leading-8 text-white">{String(index + 1).padStart(2, "0")} {track.title}</div><div className="absolute inset-x-1 bottom-1 flex h-1 items-end gap-px">{[3,7,4,9,5,8,3,6,4,8,5,7].map((height, bar) => <i key={bar} className="flex-1 bg-[rgba(136,222,206,.55)]" style={{ height }} />)}</div></Reorder.Item>) : <div className="grid h-full flex-1 place-items-center rounded-md border border-dashed border-[var(--border)] text-[10px] text-[var(--text-muted)]">Drop audio here or push tracks from New Media</div>}</Reorder.Group></TimelineLane>
         </section>
 
         <div className="grid grid-cols-[auto_auto_auto_minmax(180px,1fr)_auto] items-end gap-3"><CompactNumber label="Gap" value={settings.gapSeconds} min={0} max={10} step={0.5} suffix="s" onChange={(gapSeconds) => setSettings({ ...settings, gapSeconds })} /><CompactNumber label="Fade" value={settings.fadeSeconds} min={0} max={5} step={0.1} suffix="s" onChange={(fadeSeconds) => setSettings({ ...settings, fadeSeconds })} /><CompactNumber label="Loudness" value={settings.targetLufs} min={-24} max={-8} step={1} suffix=" LUFS" onChange={(targetLufs) => setSettings({ ...settings, targetLufs })} /><label className="text-[9px] uppercase tracking-[.12em] text-[var(--text-muted)]">Schedule publish<input type="datetime-local" value={settings.scheduledPublishAt?.slice(0, 16) ?? ""} onChange={(event) => setSettings({ ...settings, scheduledPublishAt: event.target.value ? new Date(event.target.value).toISOString() : undefined })} className="mt-1 h-8 w-full rounded-lg bg-black/20 px-3 text-xs normal-case text-white ring-1 ring-inset ring-[var(--border)]" /></label><button onClick={saveTimeline} className="h-10 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 text-sm font-medium">Save timeline</button></div>
@@ -282,8 +326,12 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
   return <Drawer open={open} onClose={onClose} title="Video timeline" icon={<Activity className="h-4 w-4" />} width="max-w-[980px]">{editor}</Drawer>;
 }
 
+function EditorTool({ icon, label, onClick, danger = false }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
+  return <button type="button" onClick={onClick} title={label} className={`flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[10px] font-medium transition hover:bg-white/[.08] ${danger ? "text-[var(--danger)]" : "text-[var(--text-secondary)] hover:text-white"}`}>{icon}{label}</button>;
+}
+
 function TimelineLane({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return <div className="grid min-h-0 grid-cols-[68px_minmax(0,1fr)] items-stretch gap-2"><div className="flex items-center gap-1.5 text-[9px] font-semibold tracking-[.13em] text-[var(--text-muted)]">{icon}{label}</div><div className="min-w-0">{children}</div></div>;
+  return <div className="grid min-h-0 grid-cols-[104px_minmax(0,1fr)] items-stretch gap-2"><div className="flex items-center gap-1.5 text-[9px] font-semibold tracking-[.13em] text-[var(--text-muted)]">{icon}{label}</div><div className="min-w-0">{children}</div></div>;
 }
 
 function EffectSlider({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
