@@ -22,9 +22,15 @@ export async function usernameMatches(candidate: string) {
   return constantTimeEqual(await digest(candidate.trim().toLowerCase()), await digest(expected.trim().toLowerCase()));
 }
 
-export async function velvetAccountMatches(username: string, password: string) {
-  const [validUsername, validPassword] = await Promise.all([usernameMatches(username), passwordMatches(password)]);
-  return validUsername && validPassword;
+export async function emailMatches(candidate: string) {
+  const expected = process.env.VELVET_ADMIN_EMAIL;
+  if (!expected) return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidate.trim());
+  return constantTimeEqual(await digest(candidate.trim().toLowerCase()), await digest(expected.trim().toLowerCase()));
+}
+
+export async function velvetAccountMatches(username: string, email: string, password: string) {
+  const [validUsername, validEmail, validPassword] = await Promise.all([usernameMatches(username), emailMatches(email), passwordMatches(password)]);
+  return validUsername && validEmail && validPassword;
 }
 
 export async function createSessionToken(now = Date.now()) {

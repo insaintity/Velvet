@@ -13,6 +13,7 @@ Recommended private single-user layout:
 Configure the Velvet service with:
 
 - `VELVET_ADMIN_USERNAME` (optional; defaults to `velvet` for a fresh private studio)
+- `VELVET_ADMIN_EMAIL` (optional; when set, login email must match this account)
 - `VELVET_ADMIN_PASSWORD` (optional; defaults to `Enter` for a fresh private studio)
 - `VELVET_SESSION_SECRET`
 - `VELVET_DATABASE_MODE=postgres`

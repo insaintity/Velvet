@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   if (limit && limit.resetAt > Date.now() && limit.count >= 8) return NextResponse.json({ error: "Too many attempts. Try again in 15 minutes." }, { status: 429 });
 
   const body = await request.json().catch(() => ({}));
-  if (typeof body.username !== "string" || typeof body.password !== "string" || !(await velvetAccountMatches(body.username, body.password))) {
+  if (typeof body.username !== "string" || typeof body.email !== "string" || typeof body.password !== "string" || !(await velvetAccountMatches(body.username, body.email, body.password))) {
     attempts.set(address, { count: limit?.resetAt && limit.resetAt > Date.now() ? limit.count + 1 : 1, resetAt: Date.now() + 15 * 60_000 });
     return NextResponse.json({ error: "That Velvet account is not correct." }, { status: 401 });
   }
