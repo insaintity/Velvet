@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Activity, Check, Clock3, Download, Eye, FileAudio, ImageIcon, Layers3, Loader2, Music2, Pause, Play, RefreshCw, RotateCcw, Sparkles, Upload, X } from "lucide-react";
+import { Activity, ArrowLeft, Check, Clock3, Download, Eye, FileAudio, ImageIcon, Layers3, Loader2, Music2, Pause, Play, RefreshCw, RotateCcw, Sparkles, Upload, X } from "lucide-react";
 import { AnimatePresence, motion, Reorder } from "framer-motion";
 import { StatusPill, Waveform } from "@/components/studio-chrome";
 import { formatDuration } from "@/lib/time";
@@ -132,19 +132,20 @@ export function CreativeVariantsDrawer({ open, onClose, projectId, variants, onU
   );
 }
 
-export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks, production, artworkAssets, onSave, onAssetUploaded }: { open: boolean; onClose: () => void; projectId: string; projectTitle: string; tracks: StudioTrack[]; production?: StudioProduction; artworkAssets: StudioArtwork[]; onSave: (tracks: StudioTrack[], production: StudioProduction) => Promise<void>; onAssetUploaded: () => Promise<void> }) {
+export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks, production, artworkAssets, onSave, onAssetUploaded, standalone = false }: { open: boolean; onClose: () => void; projectId: string; projectTitle: string; tracks: StudioTrack[]; production?: StudioProduction; artworkAssets: StudioArtwork[]; onSave: (tracks: StudioTrack[], production: StudioProduction) => Promise<void>; onAssetUploaded: () => Promise<void>; standalone?: boolean }) {
   const [ordered, setOrdered] = useState(tracks);
   const [settings, setSettings] = useState<StudioProduction>({ ...DEFAULT_STUDIO_PRODUCTION, ...production });
   const [previewing, setPreviewing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const wasOpen = useRef(false);
   useEffect(() => {
-    if (open && !wasOpen.current) {
+    const active = standalone || open;
+    if (active && !wasOpen.current) {
       setOrdered(tracks);
       setSettings({ ...DEFAULT_STUDIO_PRODUCTION, ...production });
     }
-    wasOpen.current = open;
-  }, [open, production, tracks]);
+    wasOpen.current = active;
+  }, [open, production, standalone, tracks]);
   const total = ordered.reduce((sum, track) => sum + track.durationSeconds, 0) + Math.max(0, ordered.length - 1) * settings.gapSeconds;
   const art = artworkAssets.find((asset) => asset.id === settings.artworkAssetId) ?? artworkAssets[0];
   const overlayStrength = (settings.overlayOpacity ?? 55) / 100;
@@ -169,8 +170,7 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
     setSettings((current) => ({ ...current, artworkAssetId: data.asset.id }));
   }
 
-  return (
-    <Drawer open={open} onClose={onClose} title="Video timeline" icon={<Activity className="h-4 w-4" />} width="max-w-[980px]">
+  const editor = (
       <div className="grid h-full grid-rows-[minmax(0,1fr)_164px_48px] gap-3 pt-3">
         <div className="grid min-h-0 grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)] gap-3">
           <section className="grid min-h-0 grid-rows-[minmax(0,1fr)_42px] overflow-hidden rounded-xl bg-black/30 ring-1 ring-inset ring-[var(--border)]">
@@ -210,8 +210,13 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
 
         <div className="grid grid-cols-[auto_auto_auto_minmax(180px,1fr)_auto] items-end gap-3"><CompactNumber label="Gap" value={settings.gapSeconds} min={0} max={10} step={0.5} suffix="s" onChange={(gapSeconds) => setSettings({ ...settings, gapSeconds })} /><CompactNumber label="Fade" value={settings.fadeSeconds} min={0} max={5} step={0.1} suffix="s" onChange={(fadeSeconds) => setSettings({ ...settings, fadeSeconds })} /><CompactNumber label="Loudness" value={settings.targetLufs} min={-24} max={-8} step={1} suffix=" LUFS" onChange={(targetLufs) => setSettings({ ...settings, targetLufs })} /><label className="text-[9px] uppercase tracking-[.12em] text-[var(--text-muted)]">Schedule publish<input type="datetime-local" value={settings.scheduledPublishAt?.slice(0, 16) ?? ""} onChange={(event) => setSettings({ ...settings, scheduledPublishAt: event.target.value ? new Date(event.target.value).toISOString() : undefined })} className="mt-1 h-8 w-full rounded-lg bg-black/20 px-3 text-xs normal-case text-white ring-1 ring-inset ring-[var(--border)]" /></label><button onClick={() => onSave(ordered, { ...settings, artworkAssetId: art?.id })} className="h-10 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 text-sm font-medium">Save timeline</button></div>
       </div>
-    </Drawer>
   );
+
+  if (standalone) {
+    return <div className="h-full min-h-0 w-full p-3 lg:p-4"><section aria-label="Video timeline" className="panel grid h-full min-h-0 grid-rows-[44px_minmax(0,1fr)] overflow-hidden rounded-xl bg-[#14121f] p-3"><header className="flex items-center justify-between border-b border-[var(--border)] pb-2"><div className="flex min-w-0 items-center gap-3"><button onClick={onClose} aria-label="Back to project" title="Back to project" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[.045] text-[var(--text-muted)] hover:bg-white/[.08] hover:text-white"><ArrowLeft className="h-4 w-4" /></button><Activity className="h-4 w-4 shrink-0 text-[var(--rose-soft)]" /><div className="min-w-0"><div className="text-[11px] font-semibold uppercase tracking-[.13em] text-white">Video timeline</div><div className="truncate text-[10px] text-[var(--text-muted)]">{projectTitle}</div></div></div><span className="text-[10px] uppercase tracking-[.12em] text-[var(--text-muted)]">Artwork + music + effects</span></header>{editor}</section></div>;
+  }
+
+  return <Drawer open={open} onClose={onClose} title="Video timeline" icon={<Activity className="h-4 w-4" />} width="max-w-[980px]">{editor}</Drawer>;
 }
 
 function TimelineLane({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {

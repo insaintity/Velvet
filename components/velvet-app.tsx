@@ -461,6 +461,10 @@ function FreshWorkspace({ pathname, setup }: { pathname: string; setup: SetupOve
     return <SettingsWorkspace setup={setup} />;
   }
 
+  if (pathname.startsWith("/projects/") && pathname.endsWith("/timeline")) {
+    return <VideoTimelineWorkspace id={pathname.split("/").filter(Boolean)[1]} />;
+  }
+
   if (pathname.startsWith("/projects/") && pathname !== "/projects/new") {
     return <ProjectDetailWorkspace id={pathname.split("/").filter(Boolean)[1]} />;
   }
@@ -575,6 +579,36 @@ function ProjectsWorkspace() {
   );
 }
 
+function VideoTimelineWorkspace({ id }: { id: string }) {
+  const resourceKey = `/api/projects/${id}`;
+  const cached = peekCachedJson<{ project?: ClientProject }>(resourceKey);
+  const [project, setProject] = useState<ClientProject | null>(cached?.project ?? null);
+
+  const loadProject = useCallback(async () => {
+    const data = await cachedJson<{ project?: ClientProject }>(resourceKey, true);
+    setProject(data.project ?? null);
+  }, [resourceKey]);
+
+  useEffect(() => {
+    loadProject().catch(() => setProject(null));
+    window.addEventListener("velvet:studio-update", loadProject);
+    return () => window.removeEventListener("velvet:studio-update", loadProject);
+  }, [loadProject]);
+
+  async function saveTimeline(tracks: StudioTrack[], production: StudioProduction) {
+    const response = await fetch(resourceKey, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tracks, production }) });
+    if (!response.ok) return emitToast("Timeline changes could not be saved.", "error");
+    emitToast("Video timeline saved.", "success");
+    await loadProject();
+  }
+
+  if (!project?.blueprint) {
+    return <div className="grid min-h-0 flex-1 place-items-center p-4"><section className="panel grid h-full w-full place-items-center rounded-xl"><div className="text-center"><Activity className="mx-auto h-5 w-5 animate-pulse text-[var(--rose-soft)]" /><p className="mt-3 text-sm text-[var(--text-muted)]">Loading video timeline...</p></div></section></div>;
+  }
+
+  return <SequenceDrawer standalone open onClose={() => { window.location.href = `/projects/${id}`; }} projectId={id} projectTitle={project.title} tracks={project.blueprint.tracks} production={project.production} artworkAssets={(project.referenceAssets ?? []).filter((asset) => asset.kind === "artwork")} onSave={saveTimeline} onAssetUploaded={loadProject} />;
+}
+
 function ProjectDetailWorkspace({ id }: { id: string }) {
   const setup = useSetupOverview();
   const resourceKey = `/api/projects/${id}`;
@@ -590,7 +624,6 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
   const [editRevision, setEditRevision] = useState(0);
   const [privacy, setPrivacy] = useState<"private" | "unlisted" | "public">("private");
   const [auditionTrack, setAuditionTrack] = useState<StudioTrack | null>(null);
-  const [sequenceOpen, setSequenceOpen] = useState(false);
   const [generationOpen, setGenerationOpen] = useState(false);
   const [creativeOpen, setCreativeOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
@@ -684,14 +717,6 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
     } finally {
       setBusyAction(null);
     }
-  }
-
-  async function saveStudioState(tracks: StudioTrack[], production: StudioProduction) {
-    const response = await fetch(`/api/projects/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tracks, production }) });
-    if (!response.ok) return emitToast("Timeline changes could not be saved.", "error");
-    emitToast("Video timeline saved.", "success");
-    setSequenceOpen(false);
-    await loadProject();
   }
 
   async function applyTrackPrompt(prompt: string) {
@@ -803,7 +828,7 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
 
         <div className="mt-4 grid grid-cols-1 gap-4">
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3"><SectionTitle label="Tracks & Prompts" icon={<Music2 className="h-4 w-4" />} /><div className="flex items-center gap-1"><button onClick={() => setFocusMode((current) => !current)} title={focusMode ? "Exit focus mode" : "Focus studio"} aria-label={focusMode ? "Exit focus mode" : "Focus studio"} className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-white/[.05] hover:text-white"><Focus className="h-3.5 w-3.5" /></button><button onClick={() => setSequenceOpen(true)} title="Open video timeline" aria-label="Open video timeline" className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-white/[.05] hover:text-white"><SlidersHorizontal className="h-3.5 w-3.5" /></button><button onClick={() => setGenerationOpen(true)} title="Open generation center" aria-label="Open generation center" className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-white/[.05] hover:text-white"><ListRestart className="h-3.5 w-3.5" /></button><span className="ml-1 text-[11px] text-[var(--text-muted)]">{project.generatedTracks?.length ?? 0} generated</span></div></div>
+            <div className="flex items-center justify-between gap-3"><SectionTitle label="Tracks & Prompts" icon={<Music2 className="h-4 w-4" />} /><div className="flex items-center gap-1"><button onClick={() => setFocusMode((current) => !current)} title={focusMode ? "Exit focus mode" : "Focus studio"} aria-label={focusMode ? "Exit focus mode" : "Focus studio"} className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-white/[.05] hover:text-white"><Focus className="h-3.5 w-3.5" /></button><Link href={`/projects/${id}/timeline`} title="Open video timeline" aria-label="Open video timeline" className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-white/[.05] hover:text-white"><SlidersHorizontal className="h-3.5 w-3.5" /></Link><button onClick={() => setGenerationOpen(true)} title="Open generation center" aria-label="Open generation center" className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-white/[.05] hover:text-white"><ListRestart className="h-3.5 w-3.5" /></button><span className="ml-1 text-[11px] text-[var(--text-muted)]">{project.generatedTracks?.length ?? 0} generated</span></div></div>
             <div className="grid max-h-[410px] gap-2 overflow-hidden">
               {(project.blueprint?.tracks ?? []).slice(0, 6).map((track, index) => {
                 const generated = project.generatedTracks?.[index];
@@ -889,7 +914,6 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
         </aside>
       </aside>
       <TrackAuditionDrawer open={Boolean(auditionTrack)} onClose={() => setAuditionTrack(null)} projectId={id} projectTitle={project.title} track={auditionTrack} versions={auditionTrack ? project.trackVersions?.[auditionTrack.title] ?? (project.generatedTracks?.filter((item) => item.title === auditionTrack.title) ?? []) : []} selectedVersion={auditionTrack ? project.generatedTracks?.find((item) => item.title === auditionTrack.title) : undefined} onRefresh={loadProject} onApplyPrompt={applyTrackPrompt} />
-      <SequenceDrawer open={sequenceOpen} onClose={() => setSequenceOpen(false)} projectId={id} projectTitle={project.title} tracks={project.blueprint?.tracks ?? []} production={project.production} artworkAssets={(project.referenceAssets ?? []).filter((asset) => asset.kind === "artwork")} onSave={saveStudioState} onAssetUploaded={loadProject} />
       <GenerationDrawer open={generationOpen} onClose={() => setGenerationOpen(false)} jobs={jobs} services={setup.services} estimatedCost={generationRate === null ? null : generationRate * ((project.blueprint?.tracks.reduce((sum, track) => sum + track.durationSeconds, 0) ?? 0) / 60)} onRefresh={loadProject} />
       <CreativeVariantsDrawer open={creativeOpen} onClose={() => setCreativeOpen(false)} projectId={id} variants={project.creativeVariants} onUseTitle={(title) => applyCreativeVariant("youtubeTitle", title)} onUseThumbnail={(prompt) => applyCreativeVariant("coverPrompt", prompt)} onRefresh={loadProject} />
     </div>
@@ -2226,6 +2250,9 @@ function SectionTitle({ label, icon }: { label: string; icon?: React.ReactNode }
 }
 
 function getPageTitle(pathname: string) {
+  if (pathname.startsWith("/projects/") && pathname.endsWith("/timeline")) {
+    return "Video Timeline";
+  }
   if (pathname === "/projects/new") {
     return "New Media";
   }
