@@ -19,6 +19,16 @@ export function PrivateStudioLogin() {
   const [busy, setBusy] = useState(false);
   const autoLoginAttempted = useRef(false);
 
+  function clearRememberedLogin() {
+    window.localStorage.removeItem(rememberedLoginKey);
+    setRememberLogin(false);
+    setUsername("");
+    setEmail("");
+    setPassword("");
+    setError("");
+    autoLoginAttempted.current = false;
+  }
+
   const submitLogin = useCallback(async (options?: { auto?: boolean }) => {
     if (mode !== "login" && password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -33,6 +43,7 @@ export function PrivateStudioLogin() {
     if (!response.ok && options?.auto) {
       window.localStorage.removeItem(rememberedLoginKey);
       setRememberLogin(false);
+      setPassword("");
     }
     if (!response.ok) return setError(body.error || (mode === "signup" ? "Velvet could not create that account." : mode === "recover" ? "Velvet could not recover that account." : "Velvet could not sign in."));
     if (rememberLogin && mode === "login") {
@@ -86,21 +97,24 @@ export function PrivateStudioLogin() {
         </div>
         <div className="my-7 h-px bg-[var(--border)]" />
         <div className="flex items-center gap-2 text-[var(--rose-soft)]"><LockKeyhole className="h-4 w-4" /><h1 className="text-xs font-semibold uppercase tracking-[.13em] text-white">Velvet Account</h1></div>
-        <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{mode === "signup" ? "Create the owner account for this Velvet studio." : mode === "recover" ? "Reset the owner password with your recovery code." : "Log in with your Velvet username, verified email, and password."}</p>
+        <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{mode === "signup" ? "Create the owner account for this Velvet studio." : mode === "recover" ? "Reset the owner password with your recovery code." : "Log in with your Velvet username and password. Email is optional."}</p>
         <div className="mt-5 grid h-10 grid-cols-2 rounded-xl border border-[var(--border)] bg-black/15 p-1">
           {(["login", "signup"] as const).map((item) => <button key={item} type="button" onClick={() => { setMode(item); setError(""); }} className={`rounded-lg text-xs font-medium capitalize transition ${mode === item ? "bg-white/[.11] text-white" : "text-[var(--text-muted)] hover:text-white"}`}>{item === "signup" ? "Create account" : "Log in"}</button>)}
         </div>
         <form onSubmit={submit} className="mt-5 space-y-3">
           {mode !== "recover" ? <label className="block text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--text-muted)]">Username<input autoFocus required type="text" autoComplete="username" placeholder="Username" value={username} onChange={(event) => setUsername(event.target.value)} className="glass-control mt-2 h-11 w-full rounded-lg px-3 text-sm normal-case text-white outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-active)]" /></label> : null}
-          <label className="block text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--text-muted)]">Verified email<input required type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} className="glass-control mt-2 h-11 w-full rounded-lg px-3 text-sm normal-case text-white outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-active)]" /></label>
+          <label className="block text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--text-muted)]">{mode === "login" ? "Email (optional)" : "Verified email"}<input required={mode !== "login"} type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} className="glass-control mt-2 h-11 w-full rounded-lg px-3 text-sm normal-case text-white outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-active)]" /></label>
           {mode === "recover" ? <label className="block text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--text-muted)]">Recovery code<input required type="password" autoComplete="one-time-code" placeholder="Recovery code" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} className="glass-control mt-2 h-11 w-full rounded-lg px-3 text-sm normal-case text-white outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-active)]" /></label> : null}
           <label className="block text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--text-muted)]">{mode === "recover" ? "New password" : "Password"}<input required type="password" autoComplete={mode !== "login" ? "new-password" : "current-password"} placeholder={mode === "recover" ? "New password" : "Password"} value={password} onChange={(event) => setPassword(event.target.value)} className="glass-control mt-2 h-11 w-full rounded-lg px-3 text-sm normal-case text-white outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-active)]" /></label>
           {mode !== "login" ? <label className="block text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--text-muted)]">Confirm password<input required type="password" autoComplete="new-password" placeholder="Confirm password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="glass-control mt-2 h-11 w-full rounded-lg px-3 text-sm normal-case text-white outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-active)]" /></label> : null}
           {mode === "login" ? <label className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-black/15 px-3 py-2 text-xs text-[var(--text-secondary)]"><span><span className="block text-white">Remember this account</span><span className="mt-0.5 block text-[10px] text-[var(--text-muted)]">Auto-fill and sign in on this browser.</span></span><input type="checkbox" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} className="h-4 w-4 accent-[var(--rose-soft)]" /></label> : null}
           <div aria-live="polite" className="mt-2 min-h-5 text-xs text-[var(--danger)]">{error}</div>
-          <button disabled={busy || (mode !== "recover" && !username.trim()) || !email.trim() || !password || (mode !== "login" && !confirmPassword) || (mode === "recover" && !recoveryCode)} className="glass-primary mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40">{busy ? (mode === "signup" ? "Creating" : mode === "recover" ? "Recovering" : "Signing in") : (mode === "signup" ? "Create account" : mode === "recover" ? "Recover account" : "Log in")}<ArrowRight className="h-4 w-4" /></button>
+          <button disabled={busy || (mode !== "recover" && !username.trim()) || (mode !== "login" && !email.trim()) || !password || (mode !== "login" && !confirmPassword) || (mode === "recover" && !recoveryCode)} className="glass-primary mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40">{busy ? (mode === "signup" ? "Creating" : mode === "recover" ? "Recovering" : "Signing in") : (mode === "signup" ? "Create account" : mode === "recover" ? "Recover account" : "Log in")}<ArrowRight className="h-4 w-4" /></button>
         </form>
-        <button type="button" onClick={() => { setMode(mode === "recover" ? "login" : "recover"); setError(""); }} className="mt-4 text-xs text-[var(--rose-soft)] hover:text-white">{mode === "recover" ? "Back to login" : "Lost access? Recover account"}</button>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <button type="button" onClick={() => { setMode(mode === "recover" ? "login" : "recover"); setError(""); }} className="text-xs text-[var(--rose-soft)] hover:text-white">{mode === "recover" ? "Back to login" : "Lost access? Recover account"}</button>
+          {mode === "login" && rememberLogin ? <button type="button" onClick={clearRememberedLogin} className="text-xs text-[var(--text-muted)] hover:text-white">Clear remembered login</button> : null}
+        </div>
       </motion.section>
     </main>
   );

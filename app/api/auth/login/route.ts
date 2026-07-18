@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { authIsConfigured, builtInDevAccountMatches, createSessionToken, sessionCookieOptions, velvetAccountMatches, VELVET_SESSION_COOKIE } from "@/lib/auth";
-import { storedOwnerAccountMatches } from "@/lib/server/auth-accounts";
+import { authIsConfigured, builtInDevLoginMatches, createSessionToken, sessionCookieOptions, velvetLoginMatches, VELVET_SESSION_COOKIE } from "@/lib/auth";
+import { storedOwnerLoginMatches } from "@/lib/server/auth-accounts";
 import { requireSameOrigin } from "@/lib/server/security";
 
 const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -15,8 +15,9 @@ export async function POST(request: Request) {
   if (limit && limit.resetAt > Date.now() && limit.count >= 8) return NextResponse.json({ error: "Too many attempts. Try again in 15 minutes." }, { status: 429 });
 
   const body = await request.json().catch(() => ({}));
-  const validAccount = typeof body.username === "string" && typeof body.email === "string" && typeof body.password === "string"
-    && ((await storedOwnerAccountMatches(body.username, body.email, body.password)) || (await velvetAccountMatches(body.username, body.email, body.password)) || (await builtInDevAccountMatches(body.username, body.email, body.password)));
+  const email = typeof body.email === "string" && body.email.trim() ? body.email : undefined;
+  const validAccount = typeof body.username === "string" && typeof body.password === "string"
+    && ((await storedOwnerLoginMatches(body.username, email, body.password)) || (await velvetLoginMatches(body.username, email, body.password)) || (await builtInDevLoginMatches(body.username, email, body.password)));
   if (!validAccount) {
     attempts.set(address, { count: limit?.resetAt && limit.resetAt > Date.now() ? limit.count + 1 : 1, resetAt: Date.now() + 15 * 60_000 });
     return NextResponse.json({ error: "That Velvet account is not correct." }, { status: 401 });

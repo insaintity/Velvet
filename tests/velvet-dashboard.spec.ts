@@ -89,7 +89,7 @@ test.describe("Velvet dashboard", () => {
     expect(Math.abs((cardBox!.y + cardBox!.height / 2) - viewport.height / 2)).toBeLessThanOrEqual(8);
 
     await page.getByLabel("Username").fill("VelvetDEV");
-    await page.getByLabel("Verified email").fill("emberflameog@gmail.com");
+    await expect(page.getByLabel("Email (optional)")).toBeVisible();
     await page.getByLabel("Password").fill("Velvet9292");
     await loginCard.locator("form").getByRole("button", { name: "Log in" }).click();
     await expect(page).toHaveURL(/\/projects\/new$/);

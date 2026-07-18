@@ -42,6 +42,11 @@ export async function storedOwnerAccountMatches(username: string, email: string,
   return verifyStoredOwnerAccount(database.setup.auth, username, email, password);
 }
 
+export async function storedOwnerLoginMatches(username: string, email: string | undefined, password: string) {
+  const database = await readDatabase();
+  return verifyStoredOwnerAccount(database.setup.auth, username, email, password, { emailRequired: Boolean(email) });
+}
+
 export async function readOwnerAccountSummary() {
   const database = await readDatabase();
   const account = database.setup.auth;
@@ -100,10 +105,10 @@ export async function recoverStoredOwnerAccount({ email, recoveryCode, password 
   return account;
 }
 
-function verifyStoredOwnerAccount(account: SetupRecord["auth"], username: string, email: string, password: string) {
+function verifyStoredOwnerAccount(account: SetupRecord["auth"], username: string, email: string | undefined, password: string, options: { emailRequired?: boolean } = { emailRequired: true }) {
   if (!account?.passwordHash || !account.passwordSalt) return false;
   const usernameMatches = account.username.trim().toLowerCase() === username.trim().toLowerCase();
-  const emailMatches = account.email.trim().toLowerCase() === email.trim().toLowerCase();
+  const emailMatches = !options.emailRequired || account.email.trim().toLowerCase() === email?.trim().toLowerCase();
   if (!usernameMatches || !emailMatches) return false;
   const candidate = derivePasswordHash(password, account.passwordSalt);
   const expected = Buffer.from(account.passwordHash, "hex");

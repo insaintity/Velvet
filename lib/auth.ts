@@ -33,10 +33,24 @@ export async function velvetAccountMatches(username: string, email: string, pass
   return validUsername && validEmail && validPassword;
 }
 
+export async function velvetLoginMatches(username: string, email: string | undefined, password: string) {
+  const [validUsername, validEmail, validPassword] = await Promise.all([usernameMatches(username), email ? emailMatches(email) : Promise.resolve(true), passwordMatches(password)]);
+  return validUsername && validEmail && validPassword;
+}
+
 export async function builtInDevAccountMatches(username: string, email: string, password: string) {
   const [validUsername, validEmail, validPassword] = await Promise.all([
     constantTimeEqual(await digest(username.trim().toLowerCase()), await digest(DEFAULT_ADMIN_USERNAME.toLowerCase())),
     constantTimeEqual(await digest(email.trim().toLowerCase()), await digest(DEFAULT_ADMIN_EMAIL.toLowerCase())),
+    constantTimeEqual(await digest(password), await digest(DEFAULT_STUDIO_PASSWORD))
+  ]);
+  return validUsername && validEmail && validPassword;
+}
+
+export async function builtInDevLoginMatches(username: string, email: string | undefined, password: string) {
+  const [validUsername, validEmail, validPassword] = await Promise.all([
+    constantTimeEqual(await digest(username.trim().toLowerCase()), await digest(DEFAULT_ADMIN_USERNAME.toLowerCase())),
+    email ? constantTimeEqual(await digest(email.trim().toLowerCase()), await digest(DEFAULT_ADMIN_EMAIL.toLowerCase())) : Promise.resolve(true),
     constantTimeEqual(await digest(password), await digest(DEFAULT_STUDIO_PASSWORD))
   ]);
   return validUsername && validEmail && validPassword;
