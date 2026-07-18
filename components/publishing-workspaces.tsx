@@ -13,16 +13,20 @@ type PublishingProject = { id: string; title: string; status: string; render?: {
 type PublishingJob = { id: string; projectId?: string; status: string; message: string; payload?: { privacy?: string; scheduledPublishAt?: string } };
 type PublishingUpload = { id: string; projectId: string; projectTitle?: string; url?: string; privacy: string; status: string; createdAt: string };
 type PublishingData = { projects: PublishingProject[]; schedules: PublishingJob[]; recent: PublishingUpload[] };
+type AnalyticsData = { summary: { successfulUploads: number; failedUploads: number; scheduledUploads: number; successRate: number; publicUploads: number; unlistedUploads: number; privateUploads: number }; months: Array<{ key: string; label: string; success: number; failed: number }>; uploads: PublishingUpload[]; failures: Array<{ id: string; projectId?: string; message: string; createdAt: string }> };
 
 export function PublishingWorkspace() {
   const setup = useSetupOverview();
   const [data, setData] = useState<PublishingData | null>(peekCachedJson<PublishingData>("/api/publishing") ?? null);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(peekCachedJson<AnalyticsData>("/api/analytics/uploads") ?? null);
   const [projectId, setProjectId] = useState("");
   const [privacy, setPrivacy] = useState<"private" | "unlisted" | "public">("private");
   const [scheduledAt, setScheduledAt] = useState(() => defaultScheduleValue());
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => { const body = await cachedJson<PublishingData>("/api/publishing", true); setData(body); setProjectId((current) => current || body.projects?.[0]?.id || ""); }, []);
+  const loadAnalytics = useCallback(async () => { const body = await cachedJson<AnalyticsData>("/api/analytics/uploads", true); setAnalytics(body); }, []);
   useEffect(() => { load().catch(() => setData({ projects: [], schedules: [], recent: [] })); window.addEventListener("velvet:studio-update", load); return () => window.removeEventListener("velvet:studio-update", load); }, [load]);
+  useEffect(() => { loadAnalytics().catch(() => setAnalytics(null)); window.addEventListener("velvet:studio-update", loadAnalytics); return () => window.removeEventListener("velvet:studio-update", loadAnalytics); }, [loadAnalytics]);
 
   async function schedule() {
     setBusy(true);
@@ -43,7 +47,7 @@ export function PublishingWorkspace() {
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-3 lg:p-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:gap-5">
       <section className="panel min-h-0 rounded-xl p-5">
-        <div className="flex items-center justify-between"><SectionLabel icon={<CalendarClock className="h-4 w-4" />} label="Upload scheduler" /><StatusPill status={`${data.schedules.length} scheduled`} /></div>
+        <div className="flex items-center justify-between"><SectionLabel icon={<CalendarClock className="h-4 w-4" />} label="Publishing" /><StatusPill status={`${data.schedules.length} scheduled`} /></div>
         <div className="mt-5 grid grid-cols-[180px_minmax(0,1fr)] gap-5">
           <div><ProjectArtwork title={projectById.get(projectId)?.title ?? "Velvet publishing"} /></div>
           <div className="min-w-0 space-y-4">
@@ -57,12 +61,19 @@ export function PublishingWorkspace() {
           <div className="mt-3 grid gap-2">{data.schedules.length ? data.schedules.slice(0, 4).map((job) => <motion.div layout key={job.id} className="grid grid-cols-[minmax(0,1fr)_150px_78px] items-center gap-3 rounded-lg bg-white/[.025] px-3 py-2.5 ring-1 ring-inset ring-[var(--border)]"><div className="min-w-0"><div className="truncate text-sm font-medium text-white">{projectById.get(job.projectId ?? "")?.title ?? "Scheduled release"}</div><div className="mt-1 text-[10px] capitalize text-[var(--text-muted)]">{job.payload?.privacy ?? "private"} upload</div></div><div className="text-xs tabular text-[var(--text-secondary)]">{formatSchedule(job.payload?.scheduledPublishAt)}</div><button onClick={() => cancel(job.id)} className="flex h-8 items-center justify-center gap-1.5 rounded-lg bg-white/[.04] text-xs text-[var(--danger)] hover:bg-white/[.07]"><X className="h-3 w-3" />Cancel</button></motion.div>) : <EmptyLine icon={<CalendarClock className="h-4 w-4" />} text="No uploads are scheduled." />}</div>
         </div>
       </section>
-      <aside className="panel hidden min-h-0 rounded-xl p-5 xl:block"><SectionLabel icon={<ShieldCheck className="h-4 w-4" />} label="Recent publishing" /><div className="mt-4 grid gap-2">{data.recent.length ? data.recent.map((upload) => <a key={upload.id} href={upload.url} target="_blank" rel="noreferrer" className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-white/[.025] p-2.5 ring-1 ring-inset ring-[var(--border)] hover:bg-white/[.045]"><div className="h-10 w-10"><ProjectArtwork title={upload.projectTitle ?? upload.projectId} compact /></div><div className="min-w-0"><div className="truncate text-xs font-medium text-white">{upload.projectTitle ?? "YouTube release"}</div><div className="mt-1 text-[10px] text-[var(--text-muted)]">{new Date(upload.createdAt).toLocaleDateString()} / {upload.privacy}</div></div><ExternalLink className="h-3.5 w-3.5 text-[var(--success)]" /></a>) : <EmptyLine icon={<Lock className="h-4 w-4" />} text="No prior uploads." />}</div></aside>
+      <aside className="panel hidden min-h-0 rounded-xl p-5 xl:block">
+        <SectionLabel icon={<BarChart3 className="h-4 w-4" />} label="Performance" />
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Metric label="Success" value={`${analytics?.summary.successRate ?? 0}%`} tone="success" />
+          <Metric label="Uploads" value={String(analytics?.summary.successfulUploads ?? 0)} tone="rose" />
+        </div>
+        <div className="mt-4"><SectionLabel icon={<ShieldCheck className="h-4 w-4" />} label="Recent publishing" /></div>
+        <div className="mt-3 grid gap-2">{data.recent.length ? data.recent.slice(0, 4).map((upload) => <a key={upload.id} href={upload.url} target="_blank" rel="noreferrer" className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-white/[.025] p-2.5 ring-1 ring-inset ring-[var(--border)] hover:bg-white/[.045]"><div className="h-10 w-10"><ProjectArtwork title={upload.projectTitle ?? upload.projectId} compact /></div><div className="min-w-0"><div className="truncate text-xs font-medium text-white">{upload.projectTitle ?? "YouTube release"}</div><div className="mt-1 text-[10px] text-[var(--text-muted)]">{new Date(upload.createdAt).toLocaleDateString()} / {upload.privacy}</div></div><ExternalLink className="h-3.5 w-3.5 text-[var(--success)]" /></a>) : <EmptyLine icon={<Lock className="h-4 w-4" />} text="No prior uploads." />}</div>
+        <Link href="/history" className="mt-3 flex h-9 items-center justify-center rounded-lg bg-white/[.04] text-xs text-[var(--text-secondary)] hover:bg-white/[.07] hover:text-white">Open full history</Link>
+      </aside>
     </div>
   );
 }
-
-type AnalyticsData = { summary: { successfulUploads: number; failedUploads: number; scheduledUploads: number; successRate: number; publicUploads: number; unlistedUploads: number; privateUploads: number }; months: Array<{ key: string; label: string; success: number; failed: number }>; uploads: PublishingUpload[]; failures: Array<{ id: string; projectId?: string; message: string; createdAt: string }> };
 
 export function AnalyticsWorkspace() {
   const [data, setData] = useState<AnalyticsData | null>(peekCachedJson<AnalyticsData>("/api/analytics/uploads") ?? null);

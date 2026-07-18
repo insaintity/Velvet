@@ -153,7 +153,7 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("heading", { name: "Describe the song or album." })).toBeVisible();
     await expect(page.getByRole("button", { name: "Song" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("button", { name: "Album" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create Blueprint" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create Plan" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Prompt Producer" })).toBeVisible();
     await expect(page.getByText("publishing is always a separate optional action.")).toBeVisible();
     await expect(page.getByRole("link", { name: "New Media" })).toHaveAttribute("aria-current", "page");
@@ -174,7 +174,7 @@ test.describe("Velvet dashboard", () => {
     const headingBox = await heading.boundingBox();
     expect(headingBox?.x ?? -1).toBeGreaterThanOrEqual(0);
     expect(headingBox?.y ?? -1).toBeGreaterThanOrEqual(0);
-    await expect(page.getByRole("button", { name: "Create Blueprint" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create Plan" })).toBeVisible();
 
     const hasPageScroll = await page.evaluate(() => {
       const root = document.scrollingElement ?? document.documentElement;
@@ -225,7 +225,7 @@ test.describe("Velvet dashboard", () => {
 
     await expect(page.getByText("ChatGPT and ElevenLabs are connected. YouTube is optional for publishing later.")).toBeVisible();
     await expect(page.locator(".setup-progress-count")).toHaveText(/2\s*\/\s*2/);
-    await expect(page.getByRole("heading", { name: "Database & media" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "03 Advanced" })).toBeVisible();
     await expect(page.getByLabel("AI + Music complete")).toBeVisible();
   });
 
@@ -390,11 +390,11 @@ test.describe("Velvet dashboard", () => {
     await writeFixtureDatabase();
     await page.goto("/publishing");
 
-    await expect(page.getByRole("heading", { name: "Upload scheduler" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Publishing", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Rendered release" })).toContainText("Midnight Velvet");
     await expect(page.getByLabel("Publish time")).toBeVisible();
     await expect(page.getByRole("button", { name: "Connect YouTube to publish" })).toBeDisabled();
-    await expect(page.getByRole("link", { name: "Scheduler" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "Publishing" })).toHaveAttribute("aria-current", "page");
   });
 
   test("reports prior YouTube upload outcomes", async ({ page }) => {
@@ -414,13 +414,21 @@ test.describe("Velvet dashboard", () => {
         failures: [{ id: "failed-1", projectId: fixtureProjectId, message: "YouTube quota unavailable.", createdAt: "2026-06-13T00:00:00.000Z" }]
       })
     }));
+    await page.route("**/api/publishing", (route) => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        projects: [],
+        schedules: [],
+        recent: [{ id: "upload-1", projectId: fixtureProjectId, projectTitle: "Midnight Velvet", url: "https://youtube.com/watch?v=velvet", privacy: "unlisted", status: "uploaded", createdAt: "2026-07-13T00:00:00.000Z" }]
+      })
+    }));
     await page.goto("/analytics");
 
-    await expect(page.getByRole("heading", { name: "Upload analytics" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Publishing", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Performance" })).toBeVisible();
     await expect(page.getByText("80%")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Midnight Velvet" })).toBeVisible();
-    await expect(page.getByText("YouTube quota unavailable.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Analytics" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByText("Midnight Velvet")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Publishing" })).toHaveAttribute("aria-current", "page");
   });
 
   test("shows a project-shaped loader instead of flashing the empty library", async ({ page }) => {
@@ -444,9 +452,9 @@ test.describe("Velvet dashboard", () => {
 
     await expect(page.getByRole("heading", { name: "Midnight Velvet" })).toBeVisible();
     await expect(page.getByText("Amber Masque")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Generate" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Render" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Approve Plan" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Generate Music" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Prepare Video" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download MP4" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download archive" })).toBeVisible();
     await page.getByRole("button", { name: "Edit" }).click();
@@ -499,7 +507,9 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByRole("button", { name: "Cut (S)" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Redo" })).toBeVisible();
-    await expect(page.getByText("Clip properties")).toBeVisible();
+    await page.getByRole("tab", { name: "Edit" }).click();
+    await expect(page.getByText("Selected clip")).toBeVisible();
+    await page.getByRole("tab", { name: "Effects" }).click();
     await expect(page.getByRole("button", { name: "+ grain" })).toBeVisible();
     const transparency = page.getByRole("slider", { name: "Transparency" });
     await expect(transparency).toBeVisible();
@@ -550,8 +560,8 @@ test.describe("Velvet dashboard", () => {
     await expect(page.getByText("Project media bin")).toBeVisible();
     await expect(page.locator(".video-flicker")).toHaveCount(0);
     await expect(page.locator(".video-grain")).toHaveCount(0);
-    await page.getByRole("tab", { name: "Looks" }).click();
-    await expect(page.getByText("Clip properties")).toBeVisible();
+    await page.getByRole("tab", { name: "Effects" }).click();
+    await expect(page.getByText("Velvet looks")).toBeVisible();
     await expect(page.getByText("Add an effect")).toBeVisible();
     await expect(page.getByText("Grain 18%")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "+ grain" })).toBeVisible();
@@ -567,19 +577,20 @@ test.describe("Velvet dashboard", () => {
     await page.getByText("Drop artwork or video here").click();
     await page.keyboard.press("s");
     await expect(page.getByText("Add artwork or video before cutting.")).toBeVisible();
+    await page.getByRole("tab", { name: "Export" }).click();
     await expect(page.getByLabel("Size")).toHaveValue("1080p");
     await expect(page.getByLabel("Format")).toHaveValue("mp4");
     await expect(page.getByLabel("Quality")).toHaveValue("standard");
     await page.getByLabel("Size").selectOption("shorts");
-    await expect(page.getByText("1080x1920 · MP4")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
+    await expect(page.getByText("1080x1920 - MP4 - standard")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save timeline" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Export", exact: true })).toBeVisible();
   });
 
   test("keeps primary pages inside the fixed studio frame", async ({ page }) => {
     await writeFixtureDatabase();
     await page.addInitScript(() => window.localStorage.setItem("velvet-onboarding", "dismissed"));
-    for (const path of ["/projects/new", "/projects", `/projects/${fixtureProjectId}`, "/video-editor", "/thumbnail-editor", "/publishing", "/analytics", "/history", "/settings"]) {
+    for (const path of ["/projects/new", "/projects", `/projects/${fixtureProjectId}`, "/video-editor", "/thumbnail-editor", "/publishing", "/history", "/settings"]) {
       await page.goto(path);
       const hasScroll = await page.evaluate(() => {
         const root = document.scrollingElement ?? document.documentElement;

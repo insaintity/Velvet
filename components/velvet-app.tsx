@@ -53,7 +53,6 @@ import { configureYouTubeOAuth, saveAndValidateSetup, useSetupController, useSet
 import { cachedJson, peekCachedJson, startStudioEvents } from "@/components/data-cache";
 
 const PublishingWorkspace = dynamic(() => import("@/components/publishing-workspaces").then((module) => module.PublishingWorkspace));
-const AnalyticsWorkspace = dynamic(() => import("@/components/publishing-workspaces").then((module) => module.AnalyticsWorkspace));
 const TrackAuditionDrawer = dynamic(() => import("@/components/project-studio-tools").then((module) => module.TrackAuditionDrawer), { ssr: false });
 const CreativeVariantsDrawer = dynamic(() => import("@/components/project-studio-tools").then((module) => module.CreativeVariantsDrawer), { ssr: false });
 const SequenceDrawer = dynamic(() => import("@/components/project-studio-tools").then((module) => module.SequenceDrawer), { ssr: false });
@@ -318,6 +317,10 @@ function isActiveNavItem(pathname: string, href: string) {
     return pathname === "/projects/new";
   }
 
+  if (href === "/publishing") {
+    return pathname === "/publishing" || pathname === "/scheduler" || pathname === "/analytics";
+  }
+
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -400,12 +403,8 @@ function FreshWorkspace({ pathname, setup }: { pathname: string; setup: SetupOve
     return <ProjectsWorkspace />;
   }
 
-  if (pathname === "/publishing") {
+  if (pathname === "/publishing" || pathname === "/scheduler" || pathname === "/analytics") {
     return <PublishingWorkspace />;
-  }
-
-  if (pathname === "/analytics") {
-    return <AnalyticsWorkspace />;
   }
 
   if (pathname === "/history") {
@@ -878,7 +877,7 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
       <section className="panel min-h-0 overflow-hidden rounded-xl p-4">
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
-            <SectionTitle label="Production" icon={<ListMusic className="h-4 w-4" />} />
+            <SectionTitle label="Studio Flow" icon={<ListMusic className="h-4 w-4" />} />
             <div className="mt-2 xl:hidden"><StatusPill status={project.status} /></div>
             <h1 className="mt-2 line-clamp-1 text-2xl font-semibold leading-none xl:hidden">{project.title}</h1>
           </div>
@@ -888,11 +887,13 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
           </div>
         </div>
 
+        <StudioFlow status={project.status} />
+
         <div className="mt-3 grid grid-cols-4 gap-2">
-          <WorkflowButton icon={<Check className="h-4 w-4" />} label="Approve" active={busyAction === "approve"} onClick={() => runAction("approve")} disabled={project.status !== "blueprint"} />
-          <WorkflowButton icon={<WandSparkles className="h-4 w-4" />} label="Generate" active={busyAction === "music"} onClick={() => runAction("music")} disabled={!setup.canGenerate || !["approved", "generating"].includes(project.status)} />
-          <WorkflowButton icon={<Clapperboard className="h-4 w-4" />} label="Render" active={busyAction === "render"} onClick={() => runAction("render")} disabled={!project.generatedTracks?.length || ["rendering", "uploading", "uploaded"].includes(project.status)} />
-          <WorkflowButton icon={<Upload className="h-4 w-4" />} label="Upload" active={busyAction === "upload"} onClick={() => runAction("upload")} disabled={!setup.canPublish || !(project.render?.videoPath || project.render?.videoStoragePath) || ["uploading", "uploaded"].includes(project.status)} />
+          <WorkflowButton icon={<Check className="h-4 w-4" />} label="Approve Plan" active={busyAction === "approve"} onClick={() => runAction("approve")} disabled={project.status !== "blueprint"} />
+          <WorkflowButton icon={<WandSparkles className="h-4 w-4" />} label="Generate Music" active={busyAction === "music"} onClick={() => runAction("music")} disabled={!setup.canGenerate || !["approved", "generating"].includes(project.status)} />
+          <WorkflowButton icon={<Clapperboard className="h-4 w-4" />} label="Prepare Video" active={busyAction === "render"} onClick={() => runAction("render")} disabled={!project.generatedTracks?.length || ["rendering", "uploading", "uploaded"].includes(project.status)} />
+          <WorkflowButton icon={<Upload className="h-4 w-4" />} label="Publish" active={busyAction === "upload"} onClick={() => runAction("upload")} disabled={!setup.canPublish || !(project.render?.videoPath || project.render?.videoStoragePath) || ["uploading", "uploaded"].includes(project.status)} />
         </div>
 
         <div className="mt-3 overflow-hidden rounded-lg bg-black/15 ring-1 ring-inset ring-[var(--border)]">
@@ -1050,6 +1051,34 @@ function StudioMetric({ label, value }: { label: string; value: string }) {
   return <div className="bg-[#111426] px-3 py-2.5"><div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</div><div className="mt-1 tabular text-sm text-white">{value}</div></div>;
 }
 
+function StudioFlow({ status }: { status: string }) {
+  const steps = [
+    { label: "Plan", threshold: 24 },
+    { label: "Music", threshold: 58 },
+    { label: "Video", threshold: 82 },
+    { label: "Export", threshold: 90 },
+    { label: "Publish", threshold: 100 }
+  ];
+  const progress = workflowProgress(status);
+
+  return (
+    <div className="mt-3 grid grid-cols-5 gap-1.5">
+      {steps.map((step, index) => {
+        const complete = progress >= step.threshold;
+        const active = !complete && progress >= (steps[index - 1]?.threshold ?? 0);
+        return (
+          <div key={step.label} className={`h-9 rounded-lg px-2 py-1.5 ring-1 ring-inset ${complete ? "bg-[rgba(88,182,168,.1)] text-white ring-[rgba(88,182,168,.22)]" : active ? "bg-[rgba(239,99,152,.09)] text-white ring-[var(--border-active)]" : "bg-white/[.025] text-[var(--text-muted)] ring-[var(--border)]"}`}>
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[.1em]">
+              {complete ? <Check className="h-3 w-3 text-[var(--success)]" /> : <span className="tabular text-[9px]">{String(index + 1).padStart(2, "0")}</span>}
+              <span className="truncate">{step.label}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function InspectorField({ label, value }: { label: string; value: string }) {
   return <div className="rounded-lg bg-white/[0.025] p-3 ring-1 ring-inset ring-[var(--border)]"><div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--rose-soft)]">{label}</div><p className="mt-2 line-clamp-3 text-[11px] leading-4 text-[var(--text-secondary)]">{value}</p></div>;
 }
@@ -1135,21 +1164,21 @@ function projectNextStep(project: ClientProject, setup: SetupOverview): { title:
   const generatedCount = project.generatedTracks?.length ?? 0;
   const trackCount = project.blueprint?.tracks.length ?? 0;
   if (project.status === "blueprint") {
-    return { title: "Approve the blueprint", body: "Review the track prompts and metadata, then approve before any paid music generation.", cta: "Approve", action: "approve" };
+    return { title: "Approve the plan", body: "Review the track prompts and metadata, then approve before any paid music generation.", cta: "Approve plan", action: "approve" };
   }
   if (project.status === "approved") {
     return setup.canGenerate
       ? { title: "Generate the music", body: "ElevenLabs will create the approved track prompts. You can review versions before rendering.", cta: "Generate", action: "music" }
-      : { title: "Connect ElevenLabs", body: "Blueprint is approved. Add ElevenLabs in Settings before music generation.", cta: "Settings", href: "/settings" };
+      : { title: "Connect ElevenLabs", body: "The plan is approved. Add ElevenLabs in Settings before music generation.", cta: "Settings", href: "/settings" };
   }
   if (project.status === "generating") {
     return { title: "Generation is underway", body: `${generatedCount} of ${trackCount || "the"} tracks are ready. Velvet will update this project as jobs finish.`, cta: "Jobs", href: `/projects/${project.id}` };
   }
   if (project.status === "generated") {
-    return { title: "Render the release video", body: "Combine approved audio, artwork, and visual filters into one export-ready video.", cta: "Render", action: "render", disabled: generatedCount === 0 };
+    return { title: "Prepare the release video", body: "Combine approved audio, artwork, and visual filters into one export-ready video.", cta: "Prepare video", action: "render", disabled: generatedCount === 0 };
   }
   if (project.status === "rendering") {
-    return { title: "Render is underway", body: "Velvet is preparing the video package. The render and archive links will appear when ready.", cta: "Timeline", href: `/projects/${project.id}/timeline` };
+    return { title: "Video is rendering", body: "Velvet is preparing the video package. The export and archive links will appear when ready.", cta: "Timeline", href: `/projects/${project.id}/timeline` };
   }
   if (project.status === "rendered") {
     return { title: "Export is ready", body: setup.canPublish ? "Download the video now, or send it to YouTube when you are ready." : "YouTube is optional. Download the video and archive for manual publishing.", cta: "Download video", href: `/api/projects/${project.id}/video` };
@@ -1198,9 +1227,9 @@ function EditArea({ label, value, onChange }: { label: string; value: string; on
 
 function actionLabel(action: "approve" | "music" | "render" | "upload") {
   return {
-    approve: "Approving blueprint",
+    approve: "Approving plan",
     music: "Generating music",
-    render: "Rendering package",
+    render: "Preparing video",
     upload: "Uploading to YouTube"
   }[action];
 }
@@ -1530,7 +1559,7 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
   const setupController = useSetupController();
   const [accountMessage, setAccountMessage] = useState("Update the owner email or password for this Velvet studio.");
   const [savingAccount, setSavingAccount] = useState(false);
-  const [accountForm, setAccountForm] = useState({ username: "", email: "", currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [accountForm, setAccountForm] = useState({ email: "", currentPassword: "", newPassword: "", confirmPassword: "" });
   const [youtubeStatus, setYoutubeStatus] = useState<string | null>(null);
   const [youtubeLoginAvailable, setYoutubeLoginAvailable] = useState(false);
   const [connectingYouTube, setConnectingYouTube] = useState(false);
@@ -1583,7 +1612,7 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
   useEffect(() => {
     fetch("/api/auth/account")
       .then((response) => response.json())
-      .then((data) => setAccountForm((current) => ({ ...current, username: data.account?.username ?? "", email: data.account?.email ?? "" })))
+      .then((data) => setAccountForm((current) => ({ ...current, email: data.account?.email ?? "" })))
       .catch(() => undefined);
   }, []);
 
@@ -1642,7 +1671,6 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: accountForm.username,
           email: accountForm.email,
           currentPassword: accountForm.currentPassword,
           password: accountForm.newPassword
@@ -1650,7 +1678,7 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Account could not be updated.");
-      setAccountForm((current) => ({ ...current, currentPassword: "", newPassword: "", confirmPassword: "", username: data.account?.username ?? current.username, email: data.account?.email ?? current.email }));
+      setAccountForm((current) => ({ ...current, currentPassword: "", newPassword: "", confirmPassword: "", email: data.account?.email ?? current.email }));
       setAccountMessage("Account updated.");
     } catch (error) {
       setAccountMessage(error instanceof Error ? error.message : "Account could not be updated.");
@@ -1794,7 +1822,6 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
               <button onClick={saveAccount} disabled={savingAccount || !accountForm.currentPassword} className="glass-primary flex h-9 items-center gap-2 rounded-lg px-4 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40">{savingAccount ? "Saving" : "Save account"}<ArrowRight className="h-3.5 w-3.5" /></button>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <Field label="Username" placeholder="Username" value={accountForm.username} onChange={(value) => updateAccountForm("username", value)} />
               <Field label="Email" placeholder="you@example.com" value={accountForm.email} onChange={(value) => updateAccountForm("email", value)} />
               <Field label="Current password" placeholder="Required to save" secret value={accountForm.currentPassword} onChange={(value) => updateAccountForm("currentPassword", value)} />
               <Field label="New password" placeholder="Leave blank to keep current" secret value={accountForm.newPassword} onChange={(value) => updateAccountForm("newPassword", value)} />
@@ -1831,6 +1858,7 @@ function SettingsWorkspace({ setup }: { setup: SetupOverview }) {
                 <button
                   key={key}
                   data-testid="onboarding-step"
+                  aria-label={`${number} ${label}`}
                   onClick={() => setActiveSetupStep(key as "services" | "youtube" | "review")}
                   className={`flex h-12 flex-col justify-center rounded-lg border px-3 text-left ${
                     activeSetupStep === key ? "border-[var(--border-active)] bg-[rgba(239,99,152,0.09)]" : "border-[var(--border)] bg-white/[0.035]"
@@ -2496,10 +2524,10 @@ function getPageTitle(pathname: string) {
     return "History";
   }
   if (pathname === "/publishing") {
-    return "Scheduler";
+    return "Publishing";
   }
-  if (pathname === "/analytics") {
-    return "Analytics";
+  if (pathname === "/scheduler" || pathname === "/analytics") {
+    return "Publishing";
   }
   if (pathname.startsWith("/settings")) {
     return "Settings";

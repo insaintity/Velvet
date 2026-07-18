@@ -12,17 +12,17 @@ export function NewProjectWorkspace() {
   const setup = useSetupOverview();
   const [mediaType, setMediaType] = useState<"song" | "album">("song");
   const [brief, setBrief] = useState("");
-  const [message, setMessage] = useState("Blueprint generation uses your encrypted OpenAI key after setup.");
+  const [message, setMessage] = useState("Plan creation uses your encrypted OpenAI key after setup.");
   const [isCreating, setIsCreating] = useState(false);
   const [promptProducerOpen, setPromptProducerOpen] = useState(false);
 
   async function createBlueprint() {
     if (!setup.canCreate) {
-      setMessage("Connect OpenAI in Settings before creating a blueprint.");
+      setMessage("Connect OpenAI in Settings before creating a plan.");
       return;
     }
     setIsCreating(true);
-    setMessage("Creating blueprint...");
+    setMessage("Creating plan...");
     try {
       const response = await fetch("/api/projects", {
         method: "POST",
@@ -30,10 +30,10 @@ export function NewProjectWorkspace() {
         body: JSON.stringify({ brief, mediaType })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Blueprint generation failed.");
+      if (!response.ok) throw new Error(data.error ?? "Plan creation failed.");
       window.location.href = `/projects/${data.project.id}`;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Blueprint generation failed.");
+      setMessage(error instanceof Error ? error.message : "Plan creation failed.");
     } finally {
       setIsCreating(false);
     }
@@ -61,7 +61,7 @@ export function NewProjectWorkspace() {
             ))}
           </div>
           <div className="mt-4 flex items-center justify-between gap-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[.15em] text-[var(--text-muted)]">Production brief</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[.15em] text-[var(--text-muted)]">Describe what to make</span>
             <button type="button" onClick={() => setPromptProducerOpen(true)} className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border-active)] bg-[rgba(226,102,174,.08)] px-3 text-xs font-medium text-[var(--rose-soft)] transition hover:bg-[rgba(226,102,174,.14)]"><WandSparkles className="h-3.5 w-3.5" />Prompt Producer</button>
           </div>
           <textarea value={brief} onChange={(event) => setBrief(event.target.value)} className="glass-control mt-2 min-h-[180px] w-full resize-none rounded-xl p-4 text-sm leading-6 text-white outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-active)]" placeholder={mediaType === "song" ? "Example: A smoky late-night jazz single with slow saxophone, intimate piano, brushed drums, and a cinematic noir mood. Around four minutes." : "Example: A moody late-night jazz album with slow saxophone, intimate piano and brushed drums. Instrumental, cinematic, elegant, and made for a long-form YouTube release."} aria-label="Media brief" />
@@ -69,7 +69,7 @@ export function NewProjectWorkspace() {
             <p className="text-xs leading-5 text-[var(--text-muted)]">{message}</p>
             <div className="flex shrink-0 items-center gap-2">
               {!setup.canCreate ? <Link href="/settings" className="text-xs text-[var(--rose-soft)]">Connect OpenAI</Link> : null}
-              <button onClick={createBlueprint} disabled={isCreating || !setup.canCreate || !brief.trim()} title={!setup.canCreate ? "Connect OpenAI before creating a blueprint." : "Create a reviewable blueprint."} className="glass-primary flex h-12 items-center gap-2 rounded-lg px-5 font-medium disabled:cursor-not-allowed disabled:opacity-40">{isCreating ? "Creating..." : "Create Blueprint"}<ArrowRight className="h-4 w-4" /></button>
+              <button onClick={createBlueprint} disabled={isCreating || !setup.canCreate || !brief.trim()} title={!setup.canCreate ? "Connect OpenAI before creating a plan." : "Create a reviewable plan."} className="glass-primary flex h-12 items-center gap-2 rounded-lg px-5 font-medium disabled:cursor-not-allowed disabled:opacity-40">{isCreating ? "Creating..." : "Create Plan"}<ArrowRight className="h-4 w-4" /></button>
             </div>
           </div>
           </div>
@@ -78,9 +78,9 @@ export function NewProjectWorkspace() {
           <AnimatePresence mode="wait">
             {promptProducerOpen ? <PromptProducer key="prompt-producer" open mediaType={mediaType} onClose={() => setPromptProducerOpen(false)} onComplete={(prompt, source) => { setBrief(prompt); setMessage(source === "ai" ? "Prompt Producer created this brief with ChatGPT. Review or edit it before continuing." : "Prompt created. Review or edit it before continuing."); }} /> : (
               <motion.div key="new-media-guidance" className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Guidance title="Release type" body="Songs create one-track blueprints. Albums create a multi-track plan with optional publishing metadata." />
+                <Guidance title="Release type" body="Songs create one-track plans. Albums create multi-track plans with optional publishing metadata." />
                 <Guidance title="Optional" body="After the prompt, Velvet can ask for length, track count, vocals and workflow mode only if needed." />
-                <Guidance title="Before generation" body="You will review the blueprint first. Music generation waits for ElevenLabs; publishing is always a separate optional action." />
+                <Guidance title="Before generation" body="You will review the plan first. Music generation waits for ElevenLabs; publishing is always a separate optional action." />
               </motion.div>
             )}
           </AnimatePresence>
