@@ -892,7 +892,7 @@ function ProjectDetailWorkspace({ id }: { id: string }) {
           <WorkflowButton icon={<Check className="h-4 w-4" />} label="Approve" active={busyAction === "approve"} onClick={() => runAction("approve")} disabled={project.status !== "blueprint"} />
           <WorkflowButton icon={<WandSparkles className="h-4 w-4" />} label="Generate" active={busyAction === "music"} onClick={() => runAction("music")} disabled={!setup.canGenerate || !["approved", "generating"].includes(project.status)} />
           <WorkflowButton icon={<Clapperboard className="h-4 w-4" />} label="Render" active={busyAction === "render"} onClick={() => runAction("render")} disabled={!project.generatedTracks?.length || ["rendering", "uploading", "uploaded"].includes(project.status)} />
-          <WorkflowButton icon={<Upload className="h-4 w-4" />} label="Upload" active={busyAction === "upload"} onClick={() => runAction("upload")} disabled={!setup.canPublish || !project.render?.videoPath || ["uploading", "uploaded"].includes(project.status)} />
+          <WorkflowButton icon={<Upload className="h-4 w-4" />} label="Upload" active={busyAction === "upload"} onClick={() => runAction("upload")} disabled={!setup.canPublish || !(project.render?.videoPath || project.render?.videoStoragePath) || ["uploading", "uploaded"].includes(project.status)} />
         </div>
 
         <div className="mt-3 overflow-hidden rounded-lg bg-black/15 ring-1 ring-inset ring-[var(--border)]">
@@ -1113,14 +1113,15 @@ function PrivacyMenu({ value, onChange }: { value: "private" | "unlisted" | "pub
 
 function ExportShelf({ project, setup, onUpload, uploadBusy }: { project: ClientProject; setup: SetupOverview; onUpload: () => void; uploadBusy: boolean }) {
   const hasVideo = Boolean(project.render?.videoPath || project.render?.videoStoragePath);
+  const exportLabel = (project.production?.exportFormat ?? "mp4").toUpperCase();
   return (
     <div className="mt-3 grid grid-cols-1 gap-2 rounded-xl border border-[var(--border)] bg-black/[0.12] p-3 md:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0">
         <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Export package</div>
-        <p className="mt-1 truncate text-sm text-white">{hasVideo ? "Rendered MP4 and project archive are ready for manual publishing." : "Render the release to unlock the MP4 export."}</p>
+        <p className="mt-1 truncate text-sm text-white">{hasVideo ? `Rendered ${exportLabel} and project archive are ready for manual publishing.` : "Render the release to unlock the video export."}</p>
       </div>
       <div className="flex min-w-0 items-center gap-2">
-        <a href={`/api/projects/${project.id}/video`} download aria-disabled={!hasVideo} className={`flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium ${hasVideo ? "bg-white/[0.07] text-white hover:bg-white/[0.1]" : "pointer-events-none bg-white/[0.035] text-[var(--text-muted)] opacity-45"}`}><Download className="h-3.5 w-3.5" />Download MP4</a>
+        <a href={`/api/projects/${project.id}/video`} download aria-disabled={!hasVideo} className={`flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium ${hasVideo ? "bg-white/[0.07] text-white hover:bg-white/[0.1]" : "pointer-events-none bg-white/[0.035] text-[var(--text-muted)] opacity-45"}`}><Download className="h-3.5 w-3.5" />Download {exportLabel}</a>
         <a href={`/api/projects/${project.id}/archive`} download className="flex h-9 items-center gap-2 rounded-lg bg-white/[0.045] px-3 text-xs text-[var(--text-secondary)] hover:bg-white/[0.075] hover:text-white"><FileText className="h-3.5 w-3.5" />Download archive</a>
         {setup.canPublish ? <button onClick={onUpload} disabled={!hasVideo || uploadBusy || ["uploading", "uploaded"].includes(project.status)} className="flex h-9 items-center gap-2 rounded-lg bg-[rgba(226,102,174,.08)] px-3 text-xs text-[var(--rose-soft)] hover:bg-[rgba(226,102,174,.14)] disabled:cursor-not-allowed disabled:opacity-40"><Upload className="h-3.5 w-3.5" />{uploadBusy ? "Uploading" : "YouTube"}</button> : null}
       </div>
@@ -1145,13 +1146,13 @@ function projectNextStep(project: ClientProject, setup: SetupOverview): { title:
     return { title: "Generation is underway", body: `${generatedCount} of ${trackCount || "the"} tracks are ready. Velvet will update this project as jobs finish.`, cta: "Jobs", href: `/projects/${project.id}` };
   }
   if (project.status === "generated") {
-    return { title: "Render the release video", body: "Combine approved audio, artwork, and visual filters into one YouTube-ready MP4.", cta: "Render", action: "render", disabled: generatedCount === 0 };
+    return { title: "Render the release video", body: "Combine approved audio, artwork, and visual filters into one export-ready video.", cta: "Render", action: "render", disabled: generatedCount === 0 };
   }
   if (project.status === "rendering") {
     return { title: "Render is underway", body: "Velvet is preparing the video package. The render and archive links will appear when ready.", cta: "Timeline", href: `/projects/${project.id}/timeline` };
   }
   if (project.status === "rendered") {
-    return { title: "Export is ready", body: setup.canPublish ? "Download the MP4 now, or send it to YouTube when you are ready." : "YouTube is optional. Download the MP4 and archive for manual publishing.", cta: "Download MP4", href: `/api/projects/${project.id}/video` };
+    return { title: "Export is ready", body: setup.canPublish ? "Download the video now, or send it to YouTube when you are ready." : "YouTube is optional. Download the video and archive for manual publishing.", cta: "Download video", href: `/api/projects/${project.id}/video` };
   }
   if (project.status === "uploading") {
     return { title: "Upload is underway", body: "Velvet is sending the rendered video and metadata to YouTube.", cta: "Publishing", href: "/publishing" };

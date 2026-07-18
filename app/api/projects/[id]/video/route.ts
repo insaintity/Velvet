@@ -12,11 +12,12 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
   try {
     const video = await readMedia(project.render.videoPath, project.render.videoStoragePath, database.setup);
+    const extension = readVideoExtension(project.render.videoPath, project.render.videoStoragePath, project.production?.exportFormat);
     return new Response(video, {
       headers: {
-        "Content-Type": "video/mp4",
+        "Content-Type": extension === "webm" ? "video/webm" : "video/mp4",
         "Content-Length": String(video.byteLength),
-        "Content-Disposition": `attachment; filename="${safeFileName(project.title)}.mp4"`,
+        "Content-Disposition": `attachment; filename="${safeFileName(project.title)}.${extension}"`,
         "Cache-Control": "private, max-age=3600"
       }
     });
@@ -27,4 +28,10 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
 function safeFileName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 80) || "velvet-export";
+}
+
+function readVideoExtension(videoPath?: string, storagePath?: string, format?: string) {
+  const source = `${videoPath ?? ""} ${storagePath ?? ""}`.toLowerCase();
+  if (source.includes(".webm") || format === "webm") return "webm";
+  return "mp4";
 }

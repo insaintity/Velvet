@@ -259,9 +259,9 @@ async function processYouTubeUploadJob(job: JobRecord) {
 
   const requestedVideoPath = typeof job.payload?.videoPath === "string" ? job.payload.videoPath : project.render?.videoPath;
   if (!requestedVideoPath && !project.render?.videoStoragePath) {
-    throw new Error("Render an MP4 before uploading.");
+    throw new Error("Render a video before uploading.");
   }
-  const safeVideoPath = await materializeMedia({ localPath: requestedVideoPath, storagePath: project.render?.videoStoragePath, fallbackName: `${project.id}.mp4`, setup: database.setup });
+  const safeVideoPath = await materializeMedia({ localPath: requestedVideoPath, storagePath: project.render?.videoStoragePath, fallbackName: `${project.id}.${readExportFormat(project.production).extension}`, setup: database.setup });
   const mediaIdentity = project.render?.videoStoragePath || safeVideoPath;
   const idempotencyKey = createHash("sha256").update(`${projectId}:${mediaIdentity}:${privacy}`).digest("hex");
   const existingUpload = database.uploads.find((upload) => upload.status === "uploaded" && upload.idempotencyKey === idempotencyKey);
