@@ -38,6 +38,11 @@ export async function velvetLoginMatches(username: string, email: string | undef
   return validUsername && validEmail && validPassword;
 }
 
+export async function velvetEmailLoginMatches(email: string, password: string) {
+  const [validEmail, validPassword] = await Promise.all([emailMatches(email), passwordMatches(password)]);
+  return validEmail && validPassword;
+}
+
 export async function builtInDevAccountMatches(username: string, email: string, password: string) {
   const [validUsername, validEmail, validPassword] = await Promise.all([
     constantTimeEqual(await digest(username.trim().toLowerCase()), await digest(DEFAULT_ADMIN_USERNAME.toLowerCase())),
@@ -54,6 +59,14 @@ export async function builtInDevLoginMatches(username: string, email: string | u
     constantTimeEqual(await digest(password), await digest(DEFAULT_STUDIO_PASSWORD))
   ]);
   return validUsername && validEmail && validPassword;
+}
+
+export async function builtInDevEmailLoginMatches(email: string, password: string) {
+  const [validEmail, validPassword] = await Promise.all([
+    constantTimeEqual(await digest(email.trim().toLowerCase()), await digest(DEFAULT_ADMIN_EMAIL.toLowerCase())),
+    constantTimeEqual(await digest(password), await digest(DEFAULT_STUDIO_PASSWORD))
+  ]);
+  return validEmail && validPassword;
 }
 
 export async function createSessionToken(now = Date.now()) {

@@ -8,12 +8,11 @@ const passwordKeyLength = 32;
 const passwordDigest = "sha256";
 
 export function validateAccountInput(username: unknown, email: unknown, password: unknown) {
-  const cleanUsername = typeof username === "string" ? username.trim() : "";
   const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   const cleanPassword = typeof password === "string" ? password : "";
-  if (cleanUsername.length < 3) return { error: "Choose a username with at least 3 characters." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return { error: "Enter a valid email address." };
   if (cleanPassword.length < 8) return { error: "Choose a password with at least 8 characters." };
+  const cleanUsername = typeof username === "string" && username.trim() ? username.trim() : cleanEmail.split("@")[0] ?? "velvet";
   return { username: cleanUsername.slice(0, 80), email: cleanEmail.slice(0, 180), password: cleanPassword };
 }
 
@@ -45,6 +44,11 @@ export async function storedOwnerAccountMatches(username: string, email: string,
 export async function storedOwnerLoginMatches(username: string, email: string | undefined, password: string) {
   const database = await readDatabase();
   return verifyStoredOwnerAccount(database.setup.auth, username, email, password, { emailRequired: Boolean(email) });
+}
+
+export async function storedOwnerEmailLoginMatches(email: string, password: string) {
+  const database = await readDatabase();
+  return verifyStoredOwnerEmailAccount(database.setup.auth, email, password);
 }
 
 export async function readOwnerAccountSummary() {
@@ -110,6 +114,14 @@ function verifyStoredOwnerAccount(account: SetupRecord["auth"], username: string
   const usernameMatches = account.username.trim().toLowerCase() === username.trim().toLowerCase();
   const emailMatches = !options.emailRequired || account.email.trim().toLowerCase() === email?.trim().toLowerCase();
   if (!usernameMatches || !emailMatches) return false;
+  const candidate = derivePasswordHash(password, account.passwordSalt);
+  const expected = Buffer.from(account.passwordHash, "hex");
+  return candidate.byteLength === expected.byteLength && timingSafeEqual(candidate, expected);
+}
+
+function verifyStoredOwnerEmailAccount(account: SetupRecord["auth"], email: string, password: string) {
+  if (!account?.passwordHash || !account.passwordSalt) return false;
+  if (account.email.trim().toLowerCase() !== email.trim().toLowerCase()) return false;
   const candidate = derivePasswordHash(password, account.passwordSalt);
   const expected = Buffer.from(account.passwordHash, "hex");
   return candidate.byteLength === expected.byteLength && timingSafeEqual(candidate, expected);

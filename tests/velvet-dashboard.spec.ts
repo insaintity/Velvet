@@ -79,7 +79,7 @@ test.describe("Velvet dashboard", () => {
     await page.getByRole("button", { name: "Lost access? Recover account" }).click();
     await expect(page.getByLabel("Recovery code")).toBeVisible();
     await page.getByRole("button", { name: "Back to login" }).click();
-    await expect(page.getByPlaceholder("Username")).toBeVisible();
+    await expect(page.getByPlaceholder("Username")).toHaveCount(0);
     await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
 
     const cardBox = await loginCard.boundingBox();
@@ -88,8 +88,7 @@ test.describe("Velvet dashboard", () => {
     expect(Math.abs((cardBox!.x + cardBox!.width / 2) - viewport.width / 2)).toBeLessThanOrEqual(8);
     expect(Math.abs((cardBox!.y + cardBox!.height / 2) - viewport.height / 2)).toBeLessThanOrEqual(8);
 
-    await page.getByLabel("Username").fill("VelvetDEV");
-    await expect(page.getByLabel("Email (optional)")).toBeVisible();
+    await page.getByLabel("Email").fill("emberflameog@gmail.com");
     await page.getByLabel("Password").fill("Velvet9292");
     await loginCard.locator("form").getByRole("button", { name: "Log in" }).click();
     await expect(page).toHaveURL(/\/projects\/new$/);
