@@ -25,13 +25,16 @@ export type StudioProduction = {
   flicker?: number;
   vignette?: number;
   dust?: number;
+  exportSize?: "1080p" | "720p" | "shorts" | "square";
+  exportFormat?: "mp4" | "webm";
+  exportQuality?: "draft" | "standard" | "high";
 };
 export type StudioArtwork = { id: string; name: string; kind: "audio" | "artwork"; filePath: string; storagePath?: string; previewUrl?: string; createdAt: string };
 type LocalMediaAsset = { id: string; name: string; kind: "audio" | "image" | "video"; previewUrl?: string; durationSeconds?: number; createdAt: string };
 type VideoSegment = { id: string; label: string; duration: number };
 type EffectSegment = { id: string; label: string; setting: "grain" | "flicker" | "vignette" | "dust"; duration: number };
 type EditorSnapshot = { ordered: StudioTrack[]; videoSegments: VideoSegment[]; effectSegments: EffectSegment[] };
-const DEFAULT_STUDIO_PRODUCTION: StudioProduction = { gapSeconds: 1.5, fadeSeconds: 0.8, targetLufs: -14, stylePreset: "Studio master", visualPreset: "velvet", filterIntensity: 70, overlayOpacity: 55, grain: 18, flicker: 8, vignette: 28, dust: 5 };
+const DEFAULT_STUDIO_PRODUCTION: StudioProduction = { gapSeconds: 1.5, fadeSeconds: 0.8, targetLufs: -14, stylePreset: "Studio master", visualPreset: "velvet", filterIntensity: 70, overlayOpacity: 55, grain: 18, flicker: 8, vignette: 28, dust: 5, exportSize: "1080p", exportFormat: "mp4", exportQuality: "standard" };
 const acceptedEditorMediaTypes = ".mp3,.mp4,.png,.jpg,.jpeg,.gif,audio/mpeg,audio/mp3,video/mp4,image/png,image/jpeg,image/gif";
 
 function Drawer({ open, onClose, title, icon, children, width = "max-w-[560px]" }: { open: boolean; onClose: () => void; title: string; icon: React.ReactNode; children: React.ReactNode; width?: string }) {
@@ -149,6 +152,7 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
   const [ordered, setOrdered] = useState(tracks);
   const [settings, setSettings] = useState<StudioProduction>({ ...DEFAULT_STUDIO_PRODUCTION, ...production });
   const [previewing, setPreviewing] = useState(false);
+  const [rendering, setRendering] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [localArtworkAssets, setLocalArtworkAssets] = useState<StudioArtwork[]>([]);
@@ -267,6 +271,30 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
     if (onSave) return onSave(ordered, nextProduction);
     window.localStorage.setItem("velvet:video-editor-draft", JSON.stringify({ tracks: ordered, production: nextProduction, artwork: localArtworkAssets.map((asset) => ({ id: asset.id, name: asset.name, kind: asset.kind, filePath: asset.filePath, storagePath: asset.storagePath, createdAt: asset.createdAt })), updatedAt: new Date().toISOString() }));
     emitToast("Video editor draft saved on this device.", "success");
+  }
+
+  async function exportVideo() {
+    const nextProduction = { ...settings, artworkAssetId: art?.id };
+    if (!projectId) {
+      await saveTimeline();
+      emitToast("Export settings saved. Open a project with generated audio to render a video.", "neutral");
+      return;
+    }
+    setRendering(true);
+    try {
+      if (onSave) await onSave(ordered, nextProduction);
+      const response = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId }) });
+      const data = await response.json();
+      if (!response.ok) {
+        emitToast(data.error ?? "Video export failed.", "error");
+        return;
+      }
+      emitToast(data.status === "completed" ? `Export ready: ${(nextProduction.exportFormat ?? "mp4").toUpperCase()} ${formatExportSize(nextProduction.exportSize)}` : data.message ?? "Export queued.", data.status === "completed" ? "success" : "neutral");
+    } catch {
+      emitToast("Video export failed.", "error");
+    } finally {
+      setRendering(false);
+    }
   }
 
   const activeTrackIndex = Math.min(Math.max(0, selectedTrackIndex), Math.max(0, ordered.length - 1));
@@ -502,7 +530,7 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
             </div>
             <div className="flex items-center justify-between border-t border-[var(--border)] px-3">
               <button onClick={() => setPreviewing((current) => !current)} className="flex h-8 items-center gap-2 rounded-lg bg-white/[.06] px-3 text-xs text-white">{previewing ? <Pause className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}{previewing ? "Pause preview" : "Preview motion"}</button>
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[.12em] text-[var(--text-muted)]"><Eye className="h-3.5 w-3.5" />16:9 · 1080p · {formatDuration(total)}</div>
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[.12em] text-[var(--text-muted)]"><Eye className="h-3.5 w-3.5" />{formatExportSize(settings.exportSize)} · {(settings.exportFormat ?? "mp4").toUpperCase()} · {formatDuration(total)}</div>
             </div>
           </section>
 
@@ -564,7 +592,7 @@ export function SequenceDrawer({ open, onClose, projectId, projectTitle, tracks,
           <TimelineLane label="AUDIO" icon={<Music2 className="h-3 w-3" />}><Reorder.Group axis="x" values={ordered} onReorder={(next) => { rememberEdit(); setOrdered(next); }} className="flex h-full min-w-0 gap-1">{ordered.length ? ordered.map((track, index) => <Reorder.Item value={track} key={`${track.title}-${index}`} title={`${track.title} - drag to reorder`} onContextMenu={(event: React.MouseEvent<HTMLElement>) => openClipMenu(event, "audio", index)} onClick={(event: React.MouseEvent<HTMLElement>) => { setSelectedLane("audio"); setSelectedTrackIndex(index); setCutFraction(pointerFraction(event)); }} className={`group relative min-w-[52px] cursor-grab overflow-hidden rounded-md border px-2 active:cursor-grabbing ${selectedLane === "audio" && index === activeTrackIndex ? "border-[var(--border-active)] bg-[rgba(88,182,168,.16)]" : "border-[rgba(88,182,168,.28)] bg-[rgba(88,182,168,.1)]"}`} style={{ flexGrow: track.durationSeconds, flexBasis: 0 }}><button type="button" aria-label="Trim audio shorter" onClick={(event) => { event.stopPropagation(); trimSelected(-0.25); }} className="absolute bottom-1 left-1 top-1 w-1.5 rounded bg-white/35" /><button type="button" aria-label="Trim audio longer" onClick={(event) => { event.stopPropagation(); trimSelected(0.25); }} className="absolute bottom-1 right-1 top-1 w-1.5 rounded bg-white/35" /><div className="truncate px-2 text-[9px] leading-8 text-white">{String(index + 1).padStart(2, "0")} {track.title}</div><div className="absolute inset-x-1 bottom-1 flex h-1 items-end gap-px">{[3,7,4,9,5,8,3,6,4,8,5,7].map((height, bar) => <i key={bar} className="flex-1 bg-[rgba(136,222,206,.55)]" style={{ height }} />)}</div>{selectedLane === "audio" && index === activeTrackIndex ? <i className="absolute bottom-0 top-0 w-px bg-white/80" style={{ left: `${cutFraction * 100}%` }} /> : null}</Reorder.Item>) : <button type="button" onClick={(event: React.MouseEvent<HTMLElement>) => { setSelectedLane("audio"); setCutFraction(pointerFraction(event)); }} className="grid h-full flex-1 place-items-center rounded-md border border-dashed border-[var(--border)] text-[10px] text-[var(--text-muted)]">Drop audio here or push tracks from New Media</button>}</Reorder.Group></TimelineLane>
         </section>
 
-        <div className="grid grid-cols-[auto_auto_auto_minmax(180px,1fr)_auto] items-end gap-3"><CompactNumber label="Gap" value={settings.gapSeconds} min={0} max={10} step={0.5} suffix="s" onChange={(gapSeconds) => setSettings({ ...settings, gapSeconds })} /><CompactNumber label="Fade" value={settings.fadeSeconds} min={0} max={5} step={0.1} suffix="s" onChange={(fadeSeconds) => setSettings({ ...settings, fadeSeconds })} /><CompactNumber label="Loudness" value={settings.targetLufs} min={-24} max={-8} step={1} suffix=" LUFS" onChange={(targetLufs) => setSettings({ ...settings, targetLufs })} /><label className="text-[9px] uppercase tracking-[.12em] text-[var(--text-muted)]">Schedule publish<input type="datetime-local" value={settings.scheduledPublishAt?.slice(0, 16) ?? ""} onChange={(event) => setSettings({ ...settings, scheduledPublishAt: event.target.value ? new Date(event.target.value).toISOString() : undefined })} className="mt-1 h-8 w-full rounded-lg bg-black/20 px-3 text-xs normal-case text-white ring-1 ring-inset ring-[var(--border)]" /></label><button onClick={saveTimeline} className="h-10 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-5 text-sm font-medium">Save timeline</button></div>
+        <div className="grid grid-cols-[64px_64px_82px_96px_82px_96px_minmax(150px,1fr)_auto_auto] items-end gap-2"><CompactNumber label="Gap" value={settings.gapSeconds} min={0} max={10} step={0.5} suffix="s" onChange={(gapSeconds) => setSettings({ ...settings, gapSeconds })} /><CompactNumber label="Fade" value={settings.fadeSeconds} min={0} max={5} step={0.1} suffix="s" onChange={(fadeSeconds) => setSettings({ ...settings, fadeSeconds })} /><CompactNumber label="Loudness" value={settings.targetLufs} min={-24} max={-8} step={1} suffix=" LUFS" onChange={(targetLufs) => setSettings({ ...settings, targetLufs })} /><CompactSelect label="Size" value={settings.exportSize ?? "1080p"} options={[["1080p", "1080p"], ["720p", "720p"], ["shorts", "Shorts"], ["square", "Square"]]} onChange={(exportSize) => setSettings({ ...settings, exportSize: exportSize as StudioProduction["exportSize"] })} /><CompactSelect label="Format" value={settings.exportFormat ?? "mp4"} options={[["mp4", "MP4"], ["webm", "WebM"]]} onChange={(exportFormat) => setSettings({ ...settings, exportFormat: exportFormat as StudioProduction["exportFormat"] })} /><CompactSelect label="Quality" value={settings.exportQuality ?? "standard"} options={[["draft", "Draft"], ["standard", "Standard"], ["high", "High"]]} onChange={(exportQuality) => setSettings({ ...settings, exportQuality: exportQuality as StudioProduction["exportQuality"] })} /><label className="text-[9px] uppercase tracking-[.12em] text-[var(--text-muted)]">Schedule publish<input type="datetime-local" value={settings.scheduledPublishAt?.slice(0, 16) ?? ""} onChange={(event) => setSettings({ ...settings, scheduledPublishAt: event.target.value ? new Date(event.target.value).toISOString() : undefined })} className="mt-1 h-8 w-full rounded-lg bg-black/20 px-2 text-xs normal-case text-white ring-1 ring-inset ring-[var(--border)]" /></label><button onClick={saveTimeline} className="h-10 rounded-lg bg-white/[.055] px-4 text-xs font-medium text-[var(--text-secondary)] hover:bg-white/[.08] hover:text-white">Save</button><button onClick={exportVideo} disabled={rendering} className="flex h-10 items-center gap-2 rounded-lg bg-[linear-gradient(135deg,var(--blue),var(--violet),var(--rose))] px-4 text-sm font-medium disabled:opacity-50">{rendering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}Export</button></div>
         {clipMenu ? <div role="menu" aria-label="Timeline clip menu" className="fixed z-[90] w-40 rounded-lg border border-[var(--border)] bg-[#1b1724] p-1 shadow-[0_18px_60px_rgba(0,0,0,.45)]" style={{ left: clipMenu.x, top: clipMenu.y }} onClick={(event) => event.stopPropagation()}>
           <button role="menuitem" onClick={() => runMenuAction("cut")} className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-xs text-white hover:bg-white/[.07]"><Scissors className="h-3.5 w-3.5" />Cut here</button>
           <button role="menuitem" onClick={() => runMenuAction("duplicate")} className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-xs text-[var(--text-secondary)] hover:bg-white/[.07] hover:text-white"><Copy className="h-3.5 w-3.5" />Duplicate</button>
@@ -602,6 +630,10 @@ function EffectSlider({ label, value, onChange }: { label: string; value: number
   return <label className="grid grid-cols-[74px_minmax(0,1fr)_28px] items-center gap-2 text-[9px] uppercase tracking-[.1em] text-[var(--text-muted)]"><span>{label}</span><input aria-label={label} type="range" min="0" max="100" value={value} onChange={(event) => onChange(Number(event.target.value))} className="velvet-range h-1 w-full" /><span className="tabular text-right text-[9px] text-[var(--text-secondary)]">{value}</span></label>;
 }
 
+function CompactSelect({ label, value, options, onChange }: { label: string; value: string; options: Array<[string, string]>; onChange: (value: string) => void }) {
+  return <label className="text-[9px] uppercase tracking-[.12em] text-[var(--text-muted)]">{label}<select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-8 w-full rounded-lg bg-black/20 px-2 text-xs normal-case text-white ring-1 ring-inset ring-[var(--border)]">{options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}</select></label>;
+}
+
 function previewFilter(preset: NonNullable<StudioProduction["visualPreset"]>, intensity: number) {
   const amount = Math.max(0, Math.min(1, intensity));
   if (preset === "clean") return "none";
@@ -610,6 +642,13 @@ function previewFilter(preset: NonNullable<StudioProduction["visualPreset"]>, in
   if (preset === "rose-film") return `sepia(${amount * 0.18}) saturate(${1 - amount * 0.08}) contrast(${1 + amount * 0.09}) hue-rotate(${-amount * 8}deg)`;
   if (preset === "midnight") return `saturate(${1 - amount * 0.18}) contrast(${1 + amount * 0.18}) brightness(${1 - amount * 0.07}) hue-rotate(${amount * 12}deg)`;
   return `saturate(${1 + amount * 0.12}) contrast(${1 + amount * 0.12}) brightness(${1 - amount * 0.03}) hue-rotate(${amount * 4}deg)`;
+}
+
+function formatExportSize(size?: StudioProduction["exportSize"]) {
+  if (size === "720p") return "1280x720";
+  if (size === "shorts") return "1080x1920";
+  if (size === "square") return "1080x1080";
+  return "1920x1080";
 }
 
 function fileExtension(file: File) {

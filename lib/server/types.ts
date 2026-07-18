@@ -99,6 +99,9 @@ export type ProductionSettings = {
   flicker?: number;
   vignette?: number;
   dust?: number;
+  exportSize?: "1080p" | "720p" | "shorts" | "square";
+  exportFormat?: "mp4" | "webm";
+  exportQuality?: "draft" | "standard" | "high";
 };
 
 export type ProjectRecord = {

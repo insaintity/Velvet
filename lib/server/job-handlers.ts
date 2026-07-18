@@ -189,11 +189,12 @@ async function processRenderJob(job: JobRecord) {
   if (renderTracks.length) {
     try {
       await execFileAsync(ffmpegBinary, ["-version"]);
-      videoPath = path.join(projectDir, `${project.id}.mp4`);
+      const exportFormat = readExportFormat(project.production);
+      videoPath = path.join(projectDir, `${project.id}.${exportFormat.extension}`);
       await execFileAsync(ffmpegBinary, buildAlbumRenderArgs(renderTracks, videoPath, project.production, artworkPath));
-      videoStoragePath = await persistMedia(videoPath, `projects/${project.id}/renders/${project.id}.mp4`, "video/mp4", database.setup);
+      videoStoragePath = await persistMedia(videoPath, `projects/${project.id}/renders/${project.id}.${exportFormat.extension}`, exportFormat.contentType, database.setup);
       renderStatus = "rendered";
-      message = "Full album MP4 rendered with FFmpeg.";
+      message = `Full album ${exportFormat.label} rendered with FFmpeg.`;
     } catch {
       message = "Render package is ready, but FFmpeg is not available to Velvet or could not render the video. Set FFMPEG_PATH if it is not on PATH.";
     }
@@ -337,13 +338,16 @@ function buildAlbumRenderArgs(tracks: GeneratedTrack[], videoPath: string, produ
   const gapSeconds = Math.max(0, Math.min(10, production?.gapSeconds ?? 1.5));
   const fadeSeconds = Math.max(0, Math.min(5, production?.fadeSeconds ?? 0.8));
   const targetLufs = Math.max(-24, Math.min(-8, production?.targetLufs ?? -14));
+  const size = readExportSize(production);
+  const format = readExportFormat(production);
+  const quality = readExportQuality(production);
   const totalSeconds = Math.max(
     1,
     tracks.reduce((sum, track) => sum + track.durationSeconds, 0) + Math.max(0, tracks.length - 1) * gapSeconds
   );
   const baseArgs = artworkPath
     ? ["-y", "-loop", "1", "-framerate", "30", "-i", artworkPath, ...tracks.flatMap((track) => ["-i", track.filePath])]
-    : ["-y", "-f", "lavfi", "-i", `color=c=0b0712:s=1920x1080:r=30:d=${totalSeconds}`, ...tracks.flatMap((track) => ["-i", track.filePath])];
+    : ["-y", "-f", "lavfi", "-i", `color=c=0b0712:s=${size.width}x${size.height}:r=30:d=${totalSeconds}`, ...tracks.flatMap((track) => ["-i", track.filePath])];
 
   const filters = tracks.map((track, index) => {
     const fadeOutStart = Math.max(0, track.durationSeconds - fadeSeconds);
@@ -353,7 +357,7 @@ function buildAlbumRenderArgs(tracks: GeneratedTrack[], videoPath: string, produ
   });
   const audioArgs = [
     "-filter_complex",
-    `${buildVideoFilter(production)};${filters.join(";")};${tracks.map((_, index) => `[a${index}]`).join("")}concat=n=${tracks.length}:v=0:a=1[aout]`,
+    `${buildVideoFilter(production, size)};${filters.join(";")};${tracks.map((_, index) => `[a${index}]`).join("")}concat=n=${tracks.length}:v=0:a=1[aout]`,
     "-map",
     "[vout]",
     "-map",
@@ -363,12 +367,10 @@ function buildAlbumRenderArgs(tracks: GeneratedTrack[], videoPath: string, produ
   return [
     ...baseArgs,
     ...audioArgs,
-    "-c:v",
-    "libx264",
+    ...format.videoArgs(quality),
     "-c:a",
-    "aac",
-    "-pix_fmt",
-    "yuv420p",
+    format.audioCodec,
+    ...(format.extension === "mp4" ? ["-pix_fmt", "yuv420p"] : []),
     "-r",
     "30",
     "-shortest",
@@ -376,14 +378,14 @@ function buildAlbumRenderArgs(tracks: GeneratedTrack[], videoPath: string, produ
   ];
 }
 
-function buildVideoFilter(production?: ProductionSettings) {
+function buildVideoFilter(production?: ProductionSettings, size = readExportSize(production)) {
   const intensity = clampPercent(production?.filterIntensity, 70) / 100;
   const overlay = clampPercent(production?.overlayOpacity, 55) / 100;
   const grain = clampPercent(production?.grain, 18) / 100 * overlay;
   const dust = clampPercent(production?.dust, 5) / 100 * overlay;
   const flicker = clampPercent(production?.flicker, 8) / 100 * overlay;
   const vignette = clampPercent(production?.vignette, 28) / 100 * overlay;
-  const filters = ["[0:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080", visualPresetFilter(production?.visualPreset ?? "velvet", intensity)];
+  const filters = [`[0:v]scale=${size.width}:${size.height}:force_original_aspect_ratio=increase,crop=${size.width}:${size.height}`, visualPresetFilter(production?.visualPreset ?? "velvet", intensity)];
   const noiseAmount = Math.round(grain * 28 + dust * 16);
   if (noiseAmount > 0) filters.push(`noise=alls=${noiseAmount}:allf=t+u`);
   if (flicker > 0) filters.push(`eq=brightness='${(flicker * 0.055).toFixed(4)}*sin(2*PI*t*8.7)':eval=frame`);
@@ -404,4 +406,38 @@ function visualPresetFilter(preset: ProductionSettings["visualPreset"], intensit
 
 function clampPercent(value: number | undefined, fallback: number) {
   return Math.max(0, Math.min(100, value ?? fallback));
+}
+
+function readExportSize(production?: ProductionSettings) {
+  const value = production?.exportSize ?? "1080p";
+  if (value === "720p") return { label: "720p", width: 1280, height: 720 };
+  if (value === "shorts") return { label: "Shorts", width: 1080, height: 1920 };
+  if (value === "square") return { label: "Square", width: 1080, height: 1080 };
+  return { label: "1080p", width: 1920, height: 1080 };
+}
+
+function readExportFormat(production?: ProductionSettings) {
+  if (production?.exportFormat === "webm") {
+    return {
+      label: "WebM",
+      extension: "webm",
+      contentType: "video/webm",
+      audioCodec: "libopus",
+      videoArgs: (quality: ReturnType<typeof readExportQuality>) => ["-c:v", "libvpx-vp9", "-b:v", quality.webmBitrate, "-deadline", quality.webmDeadline]
+    };
+  }
+
+  return {
+    label: "MP4",
+    extension: "mp4",
+    contentType: "video/mp4",
+    audioCodec: "aac",
+    videoArgs: (quality: ReturnType<typeof readExportQuality>) => ["-c:v", "libx264", "-preset", quality.x264Preset, "-crf", quality.x264Crf]
+  };
+}
+
+function readExportQuality(production?: ProductionSettings) {
+  if (production?.exportQuality === "draft") return { x264Preset: "veryfast", x264Crf: "28", webmBitrate: "1.8M", webmDeadline: "realtime" };
+  if (production?.exportQuality === "high") return { x264Preset: "slow", x264Crf: "18", webmBitrate: "5M", webmDeadline: "good" };
+  return { x264Preset: "medium", x264Crf: "23", webmBitrate: "3M", webmDeadline: "good" };
 }

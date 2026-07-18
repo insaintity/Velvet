@@ -568,7 +568,13 @@ test.describe("Velvet dashboard", () => {
     await page.getByText("Drop artwork or video here").click();
     await page.keyboard.press("s");
     await expect(page.getByText("Add artwork or video before cutting.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save timeline" })).toBeVisible();
+    await expect(page.getByLabel("Size")).toHaveValue("1080p");
+    await expect(page.getByLabel("Format")).toHaveValue("mp4");
+    await expect(page.getByLabel("Quality")).toHaveValue("standard");
+    await page.getByLabel("Size").selectOption("shorts");
+    await expect(page.getByText("1080x1920 · MP4")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
   });
 
   test("keeps primary pages inside the fixed studio frame", async ({ page }) => {

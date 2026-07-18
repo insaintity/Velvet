@@ -49,7 +49,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         grain: clampNumber(body.production.grain, project.production?.grain ?? 18, 0, 100),
         flicker: clampNumber(body.production.flicker, project.production?.flicker ?? 8, 0, 100),
         vignette: clampNumber(body.production.vignette, project.production?.vignette ?? 28, 0, 100),
-        dust: clampNumber(body.production.dust, project.production?.dust ?? 5, 0, 100)
+        dust: clampNumber(body.production.dust, project.production?.dust ?? 5, 0, 100),
+        exportSize: readExportSize(body.production.exportSize, project.production?.exportSize),
+        exportFormat: readExportFormat(body.production.exportFormat, project.production?.exportFormat),
+        exportQuality: readExportQuality(body.production.exportQuality, project.production?.exportQuality)
       }
     : project.production;
   const tracks = Array.isArray(body.tracks)
@@ -146,4 +149,22 @@ function readVisualPreset(value: unknown, fallback?: ProductionSettings["visualP
   return ["clean", "velvet", "rose-film", "midnight", "noir", "mono"].includes(String(value))
     ? value as "clean" | "velvet" | "rose-film" | "midnight" | "noir" | "mono"
     : fallback ?? "velvet";
+}
+
+function readExportSize(value: unknown, fallback?: ProductionSettings["exportSize"]) {
+  return ["1080p", "720p", "shorts", "square"].includes(String(value))
+    ? value as NonNullable<ProductionSettings["exportSize"]>
+    : fallback ?? "1080p";
+}
+
+function readExportFormat(value: unknown, fallback?: ProductionSettings["exportFormat"]) {
+  return ["mp4", "webm"].includes(String(value))
+    ? value as NonNullable<ProductionSettings["exportFormat"]>
+    : fallback ?? "mp4";
+}
+
+function readExportQuality(value: unknown, fallback?: ProductionSettings["exportQuality"]) {
+  return ["draft", "standard", "high"].includes(String(value))
+    ? value as NonNullable<ProductionSettings["exportQuality"]>
+    : fallback ?? "standard";
 }
